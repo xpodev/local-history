@@ -1,0 +1,10 @@
+===================================================================
+--- d:/Users/Neriya Cohen/Documents/JS/local-history/tests/.local/patches/patch-asdasd.txt-4.diff
++++ d:/Users/Neriya Cohen/Documents/JS/local-history/tests/.local/patches/patch-asdasd.txt-5.diff
+@@ -1,5 +1,4 @@
+ init
+ 1
+ 2
+-3
+ 4
+\ No newline at end of file

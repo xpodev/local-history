@@ -1,0 +1,9 @@
+===================================================================
+--- d:/Users/Neriya Cohen/Documents/JS/local-history/tests/.local/commits/commit-asdasd.txt-1.diff
++++ d:/Users/Neriya Cohen/Documents/JS/local-history/tests/.local/patches/patch-asdasd.txt-1.diff
+@@ -1,1 +1,2 @@
+-init
+\ No newline at end of file
++init
++1
+\ No newline at end of file
