@@ -18,6 +18,8 @@ let numPatches = 0;
 const onSave = vscode.workspace.onWillSaveTextDocument(async (document) => {
 	if(document.document.fileName.startsWith(lh_dir) || document.document.fileName.startsWith(lh_dir.split('/').join("\\"))) {
 		return;
+const lh_ignore_file = `${lh_dir}/.lhignore`;
+let lh_ignore: string[] = [];
 	}
 	const baseFileName = path.basename(document.document.fileName);
 	const newData = document.document.getText();
@@ -25,6 +27,7 @@ const onSave = vscode.workspace.onWillSaveTextDocument(async (document) => {
 	numCommits = getFileCommits(baseFileName).length;
 	if (numCommits < 1) {
 		newCommit(baseFileName, newData);
+	if (isIgnored(relativeFilePath)) {
 		return;
 	}
 	const diskData = fs.readFileSync(document.document.fileName).toString();
@@ -82,11 +85,19 @@ function getLastPatch(fileName: string): string {
 function getLastCommit(fileName: string): string {
 	const commits = getFileCommits(fileName);
 	return commits[commits.length - 1];
+function loadIgnoreFile(): void {
+	lh_ignore = fs.readFileSync(lh_ignore_file).toString().split("\r\n").filter(Boolean);
 }
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+function isIgnored(fileName: string): boolean {
+	const a = lh_ignore.filter(function (pattern) {
+		return new RegExp(pattern).test(fileName);
+	}).length > 0;
+	return a;
+}
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
@@ -137,7 +148,20 @@ export function activate(context: vscode.ExtensionContext) {
 		// });
 		
 	});
+function init() {
+	if (fs.existsSync(lh_ignore_file)) {
+		return;
+	} else {
+		if (fs.existsSync(lh_dir)) {
+			fs.writeFileSync(lh_ignore_file, ".lh/*\r\n");
+		} else {
+			fs.mkdirSync(lh_dir);
+		}
+	}
+}
 
+	init();
+	loadIgnoreFile();
 	context.subscriptions.push(disposable);
 	context.subscriptions.push(onSave);
 }
