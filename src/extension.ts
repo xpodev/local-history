@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as Diff from 'diff';
 import * as path from 'path';
+import { EOL } from 'os';
 
 const root_dir = unixPath(vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri.fsPath : path.dirname(vscode.workspace.textDocuments[0].fileName));
 const lh_dir = `${root_dir}/.lh`;
@@ -66,7 +67,7 @@ function diffPathOf(relativeFilePath: string): string {
 
 function loadFileDiff(relativeFilePath: string): diff | undefined {
 	const diffPath = diffPathOf(relativeFilePath);
-	return fs.existsSync(diffPath) ? JSON.parse(fs.readFileSync(diffPathOf(relativeFilePath), "utf-8")) : undefined;
+	return fs.existsSync(diffPath) ? JSON.parse(fs.readFileSync(diffPathOf(relativeFilePath), 'utf-8')) : undefined;
 	// return JSON.parse(fs.readFileSync(`${root_dir}/${fileRelativePath}`, "utf-8"));
 }
 
@@ -76,7 +77,7 @@ function saveFileDiff(relativeFilePath: string, fileDiff: diff) {
 }
 
 function loadIgnoreFile(): void {
-	lh_ignore = fs.readFileSync(lh_ignore_file).toString().split("\r\n").filter(Boolean);
+	lh_ignore = fs.readFileSync(lh_ignore_file).toString().split(EOL).filter(Boolean);
 }
 
 function isIgnored(fileName: string): boolean {
@@ -127,7 +128,7 @@ function init() {
 		return;
 	} else {
 		if (fs.existsSync(lh_dir)) {
-			fs.writeFileSync(lh_ignore_file, ".lh/*\r\n");
+			fs.writeFileSync(lh_ignore_file, `.lh/*${EOL}`);
 		} else {
 			fs.mkdirSync(lh_dir);
 		}
