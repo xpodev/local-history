@@ -2,17 +2,17 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as Diff from 'diff';
+import { initGUI } from './gui';
 import { EOL } from 'os';
 import { TextEncoder } from 'util';
 
-const root_dir = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
-const lh_dir = vscode.Uri.joinPath(root_dir, '.lh');
+export const root_dir = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
+export const lh_dir = vscode.Uri.joinPath(root_dir, '.lh');
 const lh_ignore_file = vscode.Uri.joinPath(lh_dir, '.lhignore');
-const schema = `${root_dir.scheme}:`;
 let lh_ignore: string[] = [];
 
 const onSave = vscode.workspace.onWillSaveTextDocument(async (document) => {
-	const diskData = (await vscode.workspace.fs.readFile(document.document.uri)).toString(); 
+	const diskData = (await vscode.workspace.fs.readFile(document.document.uri)).toString();
 	await createDiff(document, diskData);
 });
 
@@ -67,7 +67,7 @@ function diffPathOf(filePath: vscode.Uri): vscode.Uri {
 	return vscode.Uri.joinPath(lh_dir, `${relativeFilePath}.json`);
 }
 
-async function loadFileDiff(filePath: vscode.Uri): Promise<diff | undefined> {
+export async function loadFileDiff(filePath: vscode.Uri): Promise<diff | undefined> {
 	const diffPath = diffPathOf(filePath);
 	try {
 		if (await fileExists(diffPath)) {
@@ -104,7 +104,7 @@ async function restorePatch(): Promise<void> {
 	await restorePatchA(filePath, patchId);
 }
 
-async function restorePatchA(filePath: vscode.Uri, patchId: number): Promise<void> {
+export async function restorePatchA(filePath: vscode.Uri, patchId: number): Promise<void> {
 	const patched = await getPatched(filePath, patchId);
 	if (patched) {
 		const fileDiff = await loadFileDiff(filePath);
@@ -114,7 +114,7 @@ async function restorePatchA(filePath: vscode.Uri, patchId: number): Promise<voi
 	}
 }
 
-async function getPatched(filePath: vscode.Uri, patchId: number): Promise<string | undefined> {
+export async function getPatched(filePath: vscode.Uri, patchId: number): Promise<string | undefined> {
 	const fileDiff = await loadFileDiff(filePath);
 	if (fileDiff) {
 		if (!patchId || patchId > fileDiff.patches.length) {
@@ -141,7 +141,7 @@ async function restoreCommit(): Promise<void> {
 	await restoreCommitA(filePath, commitId);
 }
 
-async function restoreCommitA(filePath: vscode.Uri, commitId: number): Promise<void> {
+export async function restoreCommitA(filePath: vscode.Uri, commitId: number): Promise<void> {
 	const fileDiff = await loadFileDiff(filePath);
 	if (fileDiff) {
 		if (!commitId || commitId > fileDiff.commits.length) {
@@ -155,9 +155,14 @@ async function restoreCommitA(filePath: vscode.Uri, commitId: number): Promise<v
 	}
 }
 
-async function createCommit() {
-	const filePath = vscode.window.activeTextEditor!.document.uri;
-	const newData = vscode.window.activeTextEditor!.document.getText();
+export async function createCommit(filePath?: vscode.Uri) {
+	let newData;
+	if (!filePath) {
+		filePath = vscode.window.activeTextEditor!.document.uri;
+		newData = vscode.window.activeTextEditor!.document.getText();
+	} else {
+		newData = (await vscode.workspace.fs.readFile(filePath)).toString();
+	}
 	let fileDiff = await loadFileDiff(filePath);
 	if (fileDiff) {
 		newCommit(fileDiff, newData);
@@ -222,6 +227,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// console.log('Congratulations, your extension "local-history" is now active!');
 	await init();
 	await loadIgnoreFile();
+	initGUI();
 	let restorePatchCmd = vscode.commands.registerCommand('local-history.restore-patch', restorePatch);
 	let restoreCommitCmd = vscode.commands.registerCommand('local-history.restore-commit', restoreCommit);
 	let createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', createCommit);
