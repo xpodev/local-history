@@ -64,7 +64,7 @@ function newCommit(fileDiff: diff, data: string): void {
 
 function diffPathOf(filePath: vscode.Uri): vscode.Uri {
 	const relativeFilePath = vscode.workspace.asRelativePath(filePath);
-	const p = `${schema}:${lh_dir.fsPath}/${relativeFilePath}.json`;
+	const p = `${schema}${lh_dir.fsPath}/${relativeFilePath}.json`;
 	const f = vscode.Uri.parse(p);
 	return f;
 }
