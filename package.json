@@ -27,7 +27,32 @@
 				"command": "local-history.create-commit",
 				"title": "Create Commit"
 			}
-		]
+		],
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "local-history",
+					"title": "Local History",
+					"icon": "media/lh-logo.svg"
+				}
+			]
+		},
+		"views": {
+			"local-history": [
+				{
+					"id": "localHistoryFileBrowser",
+					"name": "Files",
+					"icon": "media/lh-logo.svg",
+					"contextualTitle": "Local History"
+				},
+				{
+					"id": "localHistoryDiffBrowser",
+					"name": "Diffs",
+					"icon": "media/lh-logo.svg",
+					"contextualTitle": "Local History"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
