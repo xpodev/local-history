@@ -1,9 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 import * as Diff from 'diff';
-import * as path from 'path';
 import { EOL } from 'os';
 import { TextEncoder } from 'util';
 
@@ -13,9 +11,12 @@ const lh_ignore_file = vscode.Uri.joinPath(lh_dir, '.lhignore');
 const schema = `${root_dir.scheme}:`;
 let lh_ignore: string[] = [];
 
-const onSave = vscode.workspace.onWillSaveTextDocument(createDiff);
+const onSave = vscode.workspace.onWillSaveTextDocument(async (document) => {
+	const diskData = (await vscode.workspace.fs.readFile(document.document.uri)).toString(); 
+	await createDiff(document, diskData);
+});
 
-async function createDiff(document: vscode.TextDocumentWillSaveEvent): Promise<void> {
+async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: string): Promise<void> {
 	const fullPath = document.document.uri;
 	if (fullPath.path === lh_ignore_file.path) {
 		await loadIgnoreFile();
@@ -29,9 +30,8 @@ async function createDiff(document: vscode.TextDocumentWillSaveEvent): Promise<v
 		if (fileDiff.commits.length < 1) {
 			newCommit(fileDiff, newData);
 		} else {
-			const diskData = fs.readFileSync(document.document.fileName).toString();
 			if (newData !== diskData || newData !== fileDiff.commits[fileDiff.activeCommit - 1]) {
-				const patch = Diff.createPatch('', diskData, newData !== diskData ? newData : fileDiff.commits[fileDiff.activeCommit - 1]);
+				const patch = Diff.createPatch('', newData !== diskData ? diskData : fileDiff.commits[fileDiff.activeCommit - 1], newData);
 				newPatch(fileDiff, patch);
 			}
 		}
@@ -42,9 +42,9 @@ async function createDiff(document: vscode.TextDocumentWillSaveEvent): Promise<v
 			commits: [newData],
 			patches: []
 		};
-		createFile(diffPathOf(fullPath));
+		await createFile(diffPathOf(fullPath));
 	}
-	saveFileDiff(fullPath, fileDiff);
+	await saveFileDiff(fullPath, fileDiff);
 }
 
 function newPatch(fileDiff: diff, data: string): void {
@@ -101,26 +101,35 @@ async function restorePatch(): Promise<void> {
 	const filePath = vscode.window.activeTextEditor!.document.uri;
 	let patchId: any = await vscode.window.showInputBox();
 	patchId = parseInt(patchId);
-	restorePatchA(filePath, patchId);
+	await restorePatchA(filePath, patchId);
 }
 
 async function restorePatchA(filePath: vscode.Uri, patchId: number): Promise<void> {
+	const patched = await getPatched(filePath, patchId);
+	if (patched) {
+		const fileDiff = await loadFileDiff(filePath);
+		await vscode.workspace.fs.writeFile(filePath, (new TextEncoder()).encode(patched));
+		fileDiff!.activePatch = patchId;
+		saveFileDiff(filePath, fileDiff!);
+	}
+}
+
+async function getPatched(filePath: vscode.Uri, patchId: number): Promise<string | undefined> {
 	const fileDiff = await loadFileDiff(filePath);
 	if (fileDiff) {
 		if (!patchId || patchId > fileDiff.patches.length) {
 			patchId = fileDiff.patches.length;
 		}
-		let temp = fileDiff.commits[fileDiff.activeCommit - 1];
+		let patched = fileDiff.commits[fileDiff.activeCommit - 1];
 		for (let i = 0; i < patchId; i++) {
 			const patchString = fileDiff.patches[i];
 			const uniDiff = Diff.parsePatch(patchString);
-			temp = Diff.applyPatch(temp, uniDiff[0]);
+			patched = Diff.applyPatch(patched, uniDiff[0]);
 		}
-		await vscode.workspace.fs.writeFile(filePath, (new TextEncoder()).encode(temp));
-		fileDiff.activePatch = patchId;
-		saveFileDiff(filePath, fileDiff);
+		return patched;
 	} else {
 		vscode.window.showErrorMessage(`Diff info not found on file "${filePath}"`);
+		return undefined;
 	}
 }
 
@@ -129,7 +138,7 @@ async function restoreCommit(): Promise<void> {
 	const filePath = vscode.window.activeTextEditor!.document.uri;
 	let commitId: any = await vscode.window.showInputBox();
 	commitId = parseInt(commitId);
-	restoreCommitA(filePath, commitId);
+	await restoreCommitA(filePath, commitId);
 }
 
 async function restoreCommitA(filePath: vscode.Uri, commitId: number): Promise<void> {
@@ -138,9 +147,9 @@ async function restoreCommitA(filePath: vscode.Uri, commitId: number): Promise<v
 		if (!commitId || commitId > fileDiff.commits.length) {
 			commitId = fileDiff.commits.length;
 		}
-		await vscode.workspace.fs.writeFile(filePath, (new TextEncoder()).encode(fileDiff.commits[commitId]));
+		await vscode.workspace.fs.writeFile(filePath, (new TextEncoder()).encode(fileDiff.commits[commitId - 1]));
 		fileDiff.activeCommit = commitId;
-		saveFileDiff(filePath, fileDiff);
+		await saveFileDiff(filePath, fileDiff);
 	} else {
 		vscode.window.showErrorMessage(`Diff info not found on file "${filePath}"`);
 	}
