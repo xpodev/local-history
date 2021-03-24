@@ -157,12 +157,22 @@ async function createCommit() {
 		createDiffFile(filePath, newData);
 	}
 }
+
+function createDiffFile(filePath: vscode.Uri, initCommit: string) {
+	const fileDiff = {
+		activeCommit: 1,
+		activePatch: 0,
+		commits: [initCommit],
+		patches: []
+	};
+	createFile(diffPathOf(filePath), JSON.stringify(fileDiff, null, 4));
+}
+
 async function init(): Promise<void> {
 	if (await fileExists(lh_ignore_file)) {
 		return;
 	} else {
-		if (! (await fileExists(lh_dir))) {
-
+		if (!(await fileExists(lh_dir))) {
 			await vscode.workspace.fs.createDirectory(lh_dir);
 		}
 		await vscode.workspace.fs.writeFile(lh_ignore_file, encode(`.lh/*${EOL}`));
@@ -203,8 +213,10 @@ export async function activate(context: vscode.ExtensionContext) {
 	// console.log('Congratulations, your extension "local-history" is now active!');
 	await init();
 	await loadIgnoreFile();
-	let disposable = vscode.commands.registerCommand('local-history.restore', restorePatch);
-	context.subscriptions.push(disposable);
+	let restorePatchCmd = vscode.commands.registerCommand('local-history.restore-patch', restorePatch);
+	let restoreCommitCmd = vscode.commands.registerCommand('local-history.restore-commit', restoreCommit);
+	let createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', createCommit);
+	context.subscriptions.push(createCommitCmd, restorePatchCmd, restoreCommitCmd);
 	context.subscriptions.push(onSave);
 }
 
