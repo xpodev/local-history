@@ -17,7 +17,16 @@
 		"commands": [
 			{
 				"command": "local-history.restore",
+				"command": "local-history.restore-patch",
 				"title": "Restore Patch"
+			},
+			{
+				"command": "local-history.restore-commit",
+				"title": "Restore Commit"
+			},
+			{
+				"command": "local-history.create-commit",
+				"title": "Create Commit"
 			}
 		]
 	},

@@ -124,6 +124,39 @@ async function restorePatchA(filePath: vscode.Uri, patchId: number): Promise<voi
 	}
 }
 
+async function restoreCommit(): Promise<void> {
+	// Display a message box to the user
+	const filePath = vscode.window.activeTextEditor!.document.uri;
+	let commitId: any = await vscode.window.showInputBox();
+	commitId = parseInt(commitId);
+	restoreCommitA(filePath, commitId);
+}
+
+async function restoreCommitA(filePath: vscode.Uri, commitId: number): Promise<void> {
+	const fileDiff = await loadFileDiff(filePath);
+	if (fileDiff) {
+		if (!commitId || commitId > fileDiff.commits.length) {
+			commitId = fileDiff.commits.length;
+		}
+		await vscode.workspace.fs.writeFile(filePath, (new TextEncoder()).encode(fileDiff.commits[commitId]));
+		fileDiff.activeCommit = commitId;
+		saveFileDiff(filePath, fileDiff);
+	} else {
+		vscode.window.showErrorMessage(`Diff info not found on file "${filePath}"`);
+	}
+}
+
+async function createCommit() {
+	const filePath = vscode.window.activeTextEditor!.document.uri;
+	const newData = vscode.window.activeTextEditor!.document.getText();
+	let fileDiff = await loadFileDiff(filePath);
+	if (fileDiff) {
+		newCommit(fileDiff, newData);
+		saveFileDiff(filePath, fileDiff);
+	} else {
+		createDiffFile(filePath, newData);
+	}
+}
 async function init(): Promise<void> {
 	if (await fileExists(lh_ignore_file)) {
 		return;
