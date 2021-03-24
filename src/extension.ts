@@ -8,8 +8,8 @@ import { EOL } from 'os';
 import { TextEncoder } from 'util';
 
 const root_dir = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
-const lh_dir = vscode.Uri.parse(`${root_dir}/.lh`);
-const lh_ignore_file = vscode.Uri.parse(`${lh_dir}/.lhignore`);
+const lh_dir = vscode.Uri.joinPath(root_dir, '.lh');
+const lh_ignore_file = vscode.Uri.joinPath(lh_dir, '.lhignore');
 const schema = `${root_dir.scheme}:`;
 let lh_ignore: string[] = [];
 
@@ -64,9 +64,7 @@ function newCommit(fileDiff: diff, data: string): void {
 
 function diffPathOf(filePath: vscode.Uri): vscode.Uri {
 	const relativeFilePath = vscode.workspace.asRelativePath(filePath);
-	const p = `${schema}${lh_dir.fsPath}/${relativeFilePath}.json`;
-	const f = vscode.Uri.parse(p);
-	return f;
+	return vscode.Uri.joinPath(lh_dir, relativeFilePath, '.json');
 }
 
 async function loadFileDiff(filePath: vscode.Uri): Promise<diff | undefined> {
