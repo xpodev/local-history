@@ -8,16 +8,15 @@ import { EOL } from 'os';
 import { TextEncoder } from 'util';
 
 const root_dir = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
-const lh_dir = vscode.Uri.joinPath(root_dir, '.lh');
+const lh_dir = vscode.Uri.joinPath(root_dir, '.lh/');
 const lh_ignore_file = vscode.Uri.joinPath(lh_dir, '.lhignore');
-const schema = `${root_dir.scheme}:`;
 let lh_ignore: string[] = [];
 
 const onSave = vscode.workspace.onWillSaveTextDocument(createDiff);
 
 async function createDiff(document: vscode.TextDocumentWillSaveEvent): Promise<void> {
 	const fullPath = document.document.uri;
-	if (fullPath === lh_ignore_file) {
+	if (fullPath.path === lh_ignore_file.path) {
 		loadIgnoreFile();
 	}
 	if (isIgnored(fullPath)) {
@@ -64,7 +63,7 @@ function newCommit(fileDiff: diff, data: string): void {
 
 function diffPathOf(filePath: vscode.Uri): vscode.Uri {
 	const relativeFilePath = vscode.workspace.asRelativePath(filePath);
-	return vscode.Uri.joinPath(lh_dir, relativeFilePath, '.json');
+	return vscode.Uri.joinPath(lh_dir, `${relativeFilePath}.json`);
 }
 
 async function loadFileDiff(filePath: vscode.Uri): Promise<diff | undefined> {
@@ -128,7 +127,7 @@ async function init(): Promise<void> {
 	if (await fileExists(lh_ignore_file)) {
 		return;
 	} else {
-		if (! (await fileExists(lh_dir))) {
+		if (!(await fileExists(lh_dir))) {
 
 			await vscode.workspace.fs.createDirectory(lh_dir);
 		}
