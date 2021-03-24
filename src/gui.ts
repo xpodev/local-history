@@ -3,17 +3,21 @@ import * as lh from './extension';
 import * as path from 'path';
 
 export function initGUI() {
-    const browserNodeProvider = new BrowserNodeProvider(lh.root_dir);
     vscode.window.registerTreeDataProvider('localHistoryFileBrowser', browserNodeProvider);
-    vscode.commands.registerCommand('local-history.refresh-browser', browserNodeProvider.refresh);
-    vscode.workspace.onDidCreateFiles((e) => { 
-        browserNodeProvider.refresh(); 
+    vscode.window.registerTreeDataProvider('localHistoryDiffBrowser', diffNodeProvider);
+
+    vscode.commands.registerCommand('local-history.refresh-file-browser', browserNodeProvider.refresh);
+    vscode.commands.registerCommand('local-history.list-file-diff', async (filePath: vscode.Uri) => {
+        await listFileDiff(filePath);
     });
-    vscode.workspace.onDidDeleteFiles((e) => { 
-        browserNodeProvider.refresh(); 
+    vscode.workspace.onDidCreateFiles((e) => {
+        browserNodeProvider.refresh();
     });
-    vscode.workspace.onDidRenameFiles((e) => { 
-        browserNodeProvider.refresh(); 
+    vscode.workspace.onDidDeleteFiles((e) => {
+        browserNodeProvider.refresh();
+    });
+    vscode.workspace.onDidRenameFiles((e) => {
+        browserNodeProvider.refresh();
     });
 }
 
@@ -30,7 +34,6 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
     }
 
     getTreeItem(element: PathItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        console.log(element);
         return element;
     }
 
@@ -57,7 +60,7 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
                     collapsibleState = vscode.TreeItemCollapsibleState.None;
             }
             const itemPath = vscode.Uri.joinPath(folderPath, value[0]);
-            toRet.push(new PathItem(value[0], collapsibleState, itemPath))
+            toRet.push(new PathItem(value[0], collapsibleState, itemPath, new OpenDiff("Open Diff", "local-history.list-file-diff", [itemPath])))
         })
         return toRet;
     }
@@ -84,24 +87,38 @@ class PathItem extends vscode.TreeItem {
 }
 
 class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
-    constructor(private workspaceRoot: vscode.Uri) {
+    constructor() {
 
     }
 
-    private _onDidChangeTreeData: vscode.EventEmitter<PathItem | undefined | void> = new vscode.EventEmitter<PathItem | undefined | void>();
-    readonly onDidChangeTreeData: vscode.Event<PathItem | undefined | void> = this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: vscode.EventEmitter<DiffItem | undefined | void> = new vscode.EventEmitter<DiffItem | undefined | void>();
+    readonly onDidChangeTreeData: vscode.Event<DiffItem | undefined | void> = this._onDidChangeTreeData.event;
+
+    private currentDiff: DiffItem[] = [];
 
     refresh(): void {
         this._onDidChangeTreeData.fire(undefined);
     }
 
-    getTreeItem(element: PathItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        console.log(element);
+    getTreeItem(element: DiffItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
         return element;
     }
 
-    getChildren(element?: PathItem): vscode.ProviderResult<PathItem[]> {
-        return Promise.resolve([]);
+    getChildren(element?: DiffItem): vscode.ProviderResult<DiffItem[]> {
+        return Promise.resolve(this.currentDiff);
+    }
+
+    loadDiff(fileDiff: lh.diff) {
+        this.currentDiff = [];
+        fileDiff.patches.forEach((value, index) => {
+            this.currentDiff.push(new DiffItem(`patch-${index + 1}`, vscode.TreeItemCollapsibleState.None));
+        });
+        this.refresh();
+    }
+
+    clearDiff() {
+        this.currentDiff = [];
+        this.refresh();
     }
 
 }
@@ -111,7 +128,6 @@ class DiffItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly uri: vscode.Uri,
         public readonly command?: vscode.Command
     ) {
         super(label, collapsibleState);
@@ -123,4 +139,48 @@ class DiffItem extends vscode.TreeItem {
     };
 
     contextValue = 'browserDiffItem';
+}
+
+class OpenDiff implements vscode.Command {
+    constructor(
+        public readonly title: string,
+        public readonly command: string,
+        public readonly args?: any[],
+        public readonly tooltip?: string
+    ) {
+
+    }
+
+    get arguments() {
+        return this.args;
+    }
+
+}
+
+class ApplyPatch implements vscode.Command {
+    constructor(
+        public readonly title: string,
+        public readonly command: string,
+        public readonly args?: any[],
+        public readonly tooltip?: string
+    ) {
+
+    }
+
+    get arguments() {
+        return this.args;
+    }
+
+}
+
+const diffNodeProvider = new DiffNodeProvider();
+const browserNodeProvider = new BrowserNodeProvider(lh.root_dir);
+
+async function listFileDiff(filePath: vscode.Uri) {
+    const fileDiff = await lh.loadFileDiff(filePath);
+    if (fileDiff) {
+        diffNodeProvider.loadDiff(fileDiff);
+    } else {
+        diffNodeProvider.clearDiff();
+    }
 }

@@ -17,15 +17,23 @@
 		"commands": [
 			{
 				"command": "local-history.restore-patch",
-				"title": "Restore Patch"
+				"title": "Local History: Restore Patch"
 			},
 			{
 				"command": "local-history.restore-commit",
-				"title": "Restore Commit"
+				"title": "Local History: Restore Commit"
 			},
 			{
 				"command": "local-history.create-commit",
-				"title": "Create Commit"
+				"title": "Local History: Create Commit"
+			},
+			{
+				"command": "local-history.refresh-file-brwoser",
+				"title": "Local History: Refresh File Browser"
+			},
+			{
+				"command": "local-history.list-file-diffs",
+				"title": "Local History: List File Diffs"
 			}
 		],
 		"viewsContainers": {
@@ -52,7 +60,13 @@
 					"contextualTitle": "Local History"
 				}
 			]
-		}
+		},
+		"viewsWelcome": [
+			{
+			  "view": "localHistoryDiffBrowser",
+			  "contents": "Local History will appear here"
+			}
+		  ]
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
