@@ -17,8 +17,8 @@ const onSave = vscode.workspace.onWillSaveTextDocument(createDiff);
 
 async function createDiff(document: vscode.TextDocumentWillSaveEvent): Promise<void> {
 	const fullPath = document.document.uri;
-	if (fullPath === lh_ignore_file) {
-		loadIgnoreFile();
+	if (fullPath.path === lh_ignore_file.path) {
+		await loadIgnoreFile();
 	}
 	if (isIgnored(fullPath)) {
 		return;
@@ -64,7 +64,7 @@ function newCommit(fileDiff: diff, data: string): void {
 
 function diffPathOf(filePath: vscode.Uri): vscode.Uri {
 	const relativeFilePath = vscode.workspace.asRelativePath(filePath);
-	return vscode.Uri.joinPath(lh_dir, relativeFilePath, '.json');
+	return vscode.Uri.joinPath(lh_dir, `${relativeFilePath}.json`);
 }
 
 async function loadFileDiff(filePath: vscode.Uri): Promise<diff | undefined> {
@@ -187,7 +187,7 @@ async function fileExists(fileUri: vscode.Uri): Promise<boolean> {
 }
 
 function parentFolder(uriPath: vscode.Uri): vscode.Uri {
-	return vscode.Uri.parse(path.dirname(uriPath.fsPath));
+	return vscode.Uri.joinPath(uriPath, '..');
 }
 
 function encode(str: string | undefined): Uint8Array {

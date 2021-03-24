@@ -16,7 +16,6 @@
 	"contributes": {
 		"commands": [
 			{
-				"command": "local-history.restore",
 				"command": "local-history.restore-patch",
 				"title": "Restore Patch"
 			},
