@@ -5,25 +5,26 @@ import * as fs from 'fs';
 import * as Diff from 'diff';
 import * as path from 'path';
 import { EOL } from 'os';
+import { TextEncoder } from 'util';
 
-const root_dir = unixPath(vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri.fsPath : path.dirname(vscode.workspace.textDocuments[0].fileName));
-const lh_dir = `${root_dir}/.lh`;
-const lh_ignore_file = `${lh_dir}/.lhignore`;
+const root_dir = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
+const lh_dir = vscode.Uri.parse(`${root_dir}/.lh`);
+const lh_ignore_file = vscode.Uri.parse(`${lh_dir}/.lhignore`);
+const schema = `${root_dir.scheme}:`;
 let lh_ignore: string[] = [];
 
 const onSave = vscode.workspace.onWillSaveTextDocument(createDiff);
 
-function createDiff(document: vscode.TextDocumentWillSaveEvent) {
-	const fullPath = unixPath(document.document.fileName);
-	const relativeFilePath = relativePath(fullPath);
+async function createDiff(document: vscode.TextDocumentWillSaveEvent): Promise<void> {
+	const fullPath = document.document.uri;
 	if (fullPath === lh_ignore_file) {
 		loadIgnoreFile();
 	}
-	if (isIgnored(relativeFilePath)) {
+	if (isIgnored(fullPath)) {
 		return;
 	}
 	const newData = document.document.getText();
-	let fileDiff = loadFileDiff(relativeFilePath);
+	let fileDiff = await loadFileDiff(fullPath);
 	if (fileDiff) {
 		if (fileDiff.commits.length < 1) {
 			newCommit(fileDiff, newData);
@@ -41,9 +42,9 @@ function createDiff(document: vscode.TextDocumentWillSaveEvent) {
 			commits: [newData],
 			patches: []
 		};
-		createFile(diffPathOf(relativeFilePath));
+		createFile(diffPathOf(fullPath));
 	}
-	saveFileDiff(relativeFilePath, fileDiff);
+	saveFileDiff(fullPath, fileDiff);
 }
 
 function newPatch(fileDiff: diff, data: string): void {
@@ -61,51 +62,53 @@ function newCommit(fileDiff: diff, data: string): void {
 	fileDiff.patches = [];
 }
 
-function diffPathOf(relativeFilePath: string): string {
-	return `${lh_dir}/${relativeFilePath}.json`;
+function diffPathOf(filePath: vscode.Uri): vscode.Uri {
+	const relativeFilePath = vscode.workspace.asRelativePath(filePath);
+	const p = `${schema}:${lh_dir.fsPath}/${relativeFilePath}.json`;
+	const f = vscode.Uri.parse(p);
+	return f;
 }
 
-function loadFileDiff(relativeFilePath: string): diff | undefined {
-	const diffPath = diffPathOf(relativeFilePath);
-	return fs.existsSync(diffPath) ? JSON.parse(fs.readFileSync(diffPathOf(relativeFilePath), 'utf-8')) : undefined;
-	// return JSON.parse(fs.readFileSync(`${root_dir}/${fileRelativePath}`, "utf-8"));
+async function loadFileDiff(filePath: vscode.Uri): Promise<diff | undefined> {
+	const diffPath = diffPathOf(filePath);
+	try {
+		if (await fileExists(diffPath)) {
+			return JSON.parse((await vscode.workspace.fs.readFile(diffPath)).toString());
+		} else {
+			return undefined;
+		}
+	} catch (err) {
+		console.log(err);
+	}
 }
 
-function saveFileDiff(relativeFilePath: string, fileDiff: diff) {
-	const diffPath = diffPathOf(relativeFilePath);
-	fs.writeFileSync(diffPath, JSON.stringify(fileDiff, null, 4));
+async function saveFileDiff(filePath: vscode.Uri, fileDiff: diff): Promise<void> {
+	const diffPath = diffPathOf(filePath);
+	await vscode.workspace.fs.writeFile(diffPath, encode(JSON.stringify(fileDiff, null, 4)));
 }
 
-function loadIgnoreFile(): void {
-	lh_ignore = fs.readFileSync(lh_ignore_file).toString().split(EOL).filter(Boolean);
+async function loadIgnoreFile(): Promise<void> {
+	lh_ignore = (await vscode.workspace.fs.readFile(lh_ignore_file)).toString().split(EOL).filter(Boolean);
 }
 
-function isIgnored(fileName: string): boolean {
+function isIgnored(filePath: vscode.Uri): boolean {
 	const a = lh_ignore.filter(function (pattern) {
-		return new RegExp(pattern).test(fileName);
+		return new RegExp(pattern).test(vscode.workspace.asRelativePath(filePath));
 	}).length > 0;
 	return a;
 }
 
-function unixPath(path: string): string {
-	return path.split("\\").join("/");
-}
-
-function relativePath(path: string): string {
-	return unixPath(path).replace(root_dir + "/", "");
-}
-
-async function restorePatch() {
+async function restorePatch(): Promise<void> {
 	// Display a message box to the user
-	const relativeFilePath = relativePath(vscode.window.activeTextEditor!.document.fileName);
+	const filePath = vscode.window.activeTextEditor!.document.uri;
 	let patchId: any = await vscode.window.showInputBox();
 	patchId = parseInt(patchId);
-	restorePatchA(relativeFilePath, patchId);
+	restorePatchA(filePath, patchId);
 }
 
-function restorePatchA(relativeFilePath: string, patchId: number) {
-	const fileDiff = loadFileDiff(relativeFilePath);
-	if(fileDiff) {
+async function restorePatchA(filePath: vscode.Uri, patchId: number): Promise<void> {
+	const fileDiff = await loadFileDiff(filePath);
+	if (fileDiff) {
 		if (!patchId || patchId > fileDiff.patches.length) {
 			patchId = fileDiff.patches.length;
 		}
@@ -115,43 +118,60 @@ function restorePatchA(relativeFilePath: string, patchId: number) {
 			const uniDiff = Diff.parsePatch(patchString);
 			temp = Diff.applyPatch(temp, uniDiff[0]);
 		}
-		fs.writeFileSync(`${root_dir}/${relativeFilePath}`, temp);
+		await vscode.workspace.fs.writeFile(filePath, (new TextEncoder()).encode(temp));
 		fileDiff.activePatch = patchId;
-		saveFileDiff(relativeFilePath, fileDiff);
+		saveFileDiff(filePath, fileDiff);
 	} else {
-		vscode.window.showErrorMessage(`Diff info not found on file ${relativeFilePath}`);
+		vscode.window.showErrorMessage(`Diff info not found on file "${filePath}"`);
 	}
 }
 
-function init() {
-	if (fs.existsSync(lh_ignore_file)) {
+async function init(): Promise<void> {
+	if (await fileExists(lh_ignore_file)) {
 		return;
 	} else {
-		if (fs.existsSync(lh_dir)) {
-			fs.writeFileSync(lh_ignore_file, `.lh/*${EOL}`);
-		} else {
-			fs.mkdirSync(lh_dir);
+		if (! (await fileExists(lh_dir))) {
+
+			await vscode.workspace.fs.createDirectory(lh_dir);
 		}
+		await vscode.workspace.fs.writeFile(lh_ignore_file, encode(`.lh/*${EOL}`));
 	}
 }
 
-function createFile(relativePath: string, data?: string | undefined) {
-	if (fs.existsSync(`${root_dir}/${relativePath}`)) {
+async function createFile(filePath: vscode.Uri, data?: string | undefined) {
+	if (await fileExists(filePath)) {
 		return;
 	}
-	fs.mkdirSync(path.dirname(relativePath), { recursive: true });
-	fs.writeFileSync(relativePath, data);
+	await vscode.workspace.fs.createDirectory(parentFolder(filePath));
+	await vscode.workspace.fs.writeFile(filePath, encode(data));
+}
+
+async function fileExists(fileUri: vscode.Uri): Promise<boolean> {
+	try {
+		const f = await vscode.workspace.fs.stat(fileUri);
+		return true;
+	} catch (err) {
+		return false;
+	}
+}
+
+function parentFolder(uriPath: vscode.Uri): vscode.Uri {
+	return vscode.Uri.parse(path.dirname(uriPath.fsPath));
+}
+
+function encode(str: string | undefined): Uint8Array {
+	return (new TextEncoder()).encode(str);
 }
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
 	// console.log('Congratulations, your extension "local-history" is now active!');
-	init();
-	loadIgnoreFile();
+	await init();
+	await loadIgnoreFile();
 	let disposable = vscode.commands.registerCommand('local-history.restore', restorePatch);
 	context.subscriptions.push(disposable);
 	context.subscriptions.push(onSave);
