@@ -37,33 +37,51 @@ async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: 
 		if (fileDiff.commits.length < 1) {
 			newCommit(fileDiff, newData);
 		} else {
-			if (newData !== diskData || newData !== fileDiff.commits[fileDiff.activeCommit - 1]) {
-				const patch = Diff.createPatch('', newData !== diskData ? diskData : fileDiff.commits[fileDiff.activeCommit - 1], newData);
+			const lastCommit = fileDiff.commits[fileDiff.activeCommit - 1].content;
+			if (newData !== diskData || newData !== lastCommit) {
+				const patch = Diff.createPatch('', newData !== diskData ? diskData : lastCommit, newData);
 				newPatch(fileDiff, patch);
 			}
 		}
 	} else {
 		fileDiff = {
-			activeCommit: 1,
+			activeCommit: 0,
 			activePatch: 0,
-			commits: [newData],
+			commits: [],
 			patches: []
 		};
+		newCommit(fileDiff, newData);
 		await createFile(diffPathOf(fullPath));
 	}
-	await saveFileDiff(fullPath, fileDiff);
+	await saveFileDiff(fullPath, fileDiff!);
 }
 
 function newPatch(fileDiff: diff, data: string): void {
 	if (fileDiff.activePatch < fileDiff.patches.length) {
 		fileDiff.patches = fileDiff.patches.slice(0, fileDiff.activePatch);
 	}
-	fileDiff.patches.push(data);
+	const patchDate = new Date();
+	const patch: patch = {
+		date: Utilities.formatDate(patchDate, config.dateFormat),
+		content: data
+	}
+	fileDiff.patches.push(patch);
 	fileDiff.activePatch = fileDiff.patches.length;
 }
 
-function newCommit(fileDiff: diff, data: string): void {
-	fileDiff.commits.push(data);
+function newCommit(fileDiff: diff, data: string | commit, name?: string): void {
+	const commitDate = new Date();
+	let createdCommit = {};
+	if(typeof data == 'string') {
+		createdCommit = {
+			name: name ? name : `Commit${fileDiff ? fileDiff.commits.length : 1}-${Utilities.formatDate(commitDate, config.dateFormat)}`,
+			date: commitDate.toLocaleString(),
+			content: data
+		}
+	} else {
+		createdCommit = data;
+	}
+	fileDiff.commits.push(createdCommit as commit);
 	fileDiff.activeCommit = fileDiff.commits.length;
 	fileDiff.activePatch = 0;
 	fileDiff.patches = [];
@@ -127,9 +145,9 @@ export async function getPatched(filePath: vscode.Uri, patchId: number): Promise
 		if (!patchId || patchId > fileDiff.patches.length) {
 			patchId = fileDiff.patches.length;
 		}
-		let patched = fileDiff.commits[fileDiff.activeCommit - 1];
+		let patched = fileDiff.commits[fileDiff.activeCommit - 1].content;
 		for (let i = 0; i < patchId; i++) {
-			const patchString = fileDiff.patches[i];
+			const patchString = fileDiff.patches[i].content;
 			const uniDiff = Diff.parsePatch(patchString);
 			patched = Diff.applyPatch(patched, uniDiff[0]);
 		}
@@ -154,7 +172,7 @@ export async function restoreCommitA(filePath: vscode.Uri, commitId: number): Pr
 		if (!commitId || commitId > fileDiff.commits.length) {
 			commitId = fileDiff.commits.length;
 		}
-		await vscode.workspace.fs.writeFile(filePath, (new TextEncoder()).encode(fileDiff.commits[commitId - 1]));
+		await vscode.workspace.fs.writeFile(filePath, (new TextEncoder()).encode(fileDiff.commits[commitId - 1].content));
 		fileDiff.activeCommit = commitId;
 		await saveFileDiff(filePath, fileDiff);
 	} else {
@@ -171,21 +189,34 @@ export async function createCommit(filePath?: vscode.Uri) {
 		newData = (await vscode.workspace.fs.readFile(filePath)).toString();
 	}
 	let fileDiff = await loadFileDiff(filePath);
+	let commitName = await vscode.window.showInputBox();
+	const commitDate = new Date();
+	if (!commitName) {
+		commitName = `Commit${fileDiff ? fileDiff.commits.length : 1}-${Utilities.formatDate(commitDate, config.dateFormat)}`;
+	}
+	const createdCommit: commit = {
+		name: commitName,
+		date: commitDate.toLocaleString(),
+		content: newData
+	}
 	if (fileDiff) {
 		newCommit(fileDiff, newData);
 		saveFileDiff(filePath, fileDiff);
 	} else {
-		createDiffFile(filePath, newData);
+		createDiffFile(filePath, createdCommit);
 	}
 }
 
-function createDiffFile(filePath: vscode.Uri, initCommit: string) {
-	const fileDiff = {
-		activeCommit: 1,
+function createDiffFile(filePath: vscode.Uri, initCommit?: commit) {
+	const fileDiff: diff = {
+		activeCommit: 0,
 		activePatch: 0,
-		commits: [initCommit],
+		commits: [],
 		patches: []
 	};
+	if(initCommit) {
+		newCommit(fileDiff, initCommit);
+	}
 	createFile(diffPathOf(filePath), JSON.stringify(fileDiff, null, 4));
 }
 
@@ -245,9 +276,21 @@ export async function activate(context: vscode.ExtensionContext) {
 // this method is called when your extension is deactivated
 export function deactivate() { }
 
-type diff = {
+export type diff = {
 	activeCommit: number,
 	activePatch: number,
-	commits: string[],
-	patches: string[]
+	commits: commit[],
+	patches: patch[]
 }
+
+export type commit = {
+	name: string,
+	content: string,
+	date: string
+}
+
+export type patch = {
+	content: string,
+	date: string
+}
+
