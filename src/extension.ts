@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as Diff from 'diff';
+import * as Utilities from './utilities';
 import { initGUI } from './gui';
 import { EOL } from 'os';
 import { TextEncoder } from 'util';
@@ -10,6 +11,12 @@ export const root_dir = vscode.workspace.workspaceFolders?.length ? vscode.works
 export const lh_dir = vscode.Uri.joinPath(root_dir, '.lh');
 const lh_ignore_file = vscode.Uri.joinPath(lh_dir, '.lhignore');
 let lh_ignore: string[] = [];
+
+
+
+const config = {
+	dateFormat: "dd-MM-yy"
+}
 
 const onSave = vscode.workspace.onWillSaveTextDocument(async (document) => {
 	const diskData = (await vscode.workspace.fs.readFile(document.document.uri)).toString();
