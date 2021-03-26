@@ -179,14 +179,13 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
     }
 
     async selectFile(filePath: vscode.Uri) {
+        this.currentDiff = [];
         const fileDiff = await lh.loadFileDiff(filePath);
         if (fileDiff) {
             fileDiff.patches.forEach((value, index) => {
                 const onOpenPatch = new OpenPatchCmd("Local History: Open Patch", "local-history.open-patch", [fileDiff, index, filePath])
                 this.currentDiff.push(new DiffItem(`patch-${index + 1}`, vscode.TreeItemCollapsibleState.None, fileDiff, onOpenPatch));
             });
-        } else {
-            this.currentDiff = [];
         }
         this.refresh();
     }
