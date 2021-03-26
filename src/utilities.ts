@@ -1,3 +1,6 @@
+import { TextEncoder } from "util";
+import * as crypto from 'crypto';
+
 const monthNames = [
     "January", "February", "March", "April", "May", "June", "July",
     "August", "September", "October", "November", "December"
@@ -45,18 +48,10 @@ export function formatDate(date: Date, formatStr?: string) {
         ;
 }
 
+export function encode(str: string | undefined): Uint8Array {
+    return (new TextEncoder()).encode(str);
+}
+
 function twoDigitPad(num: number) {
     return num < 10 ? "0" + num : num;
-}
-
-type some = {
-    name: string
-}
-
-const a: some = {
-    name: "asd"
-}
-
-if(typeof {} == typeof a) {
-    console.log("True");
 }

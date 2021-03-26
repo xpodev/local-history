@@ -32,8 +32,16 @@
 				"title": "Local History: Refresh File Browser"
 			},
 			{
-				"command": "local-history.list-file-diffs",
-				"title": "Local History: List File Diffs"
+				"command": "local-history.open-source",
+				"title": "Local History: Open Source"
+			},
+			{
+				"command": "local-history.diff-browser.restore-patch",
+				"title": "Restore Patch"
+			},
+			{
+				"command": "local-history.open-patch",
+				"title": "Local History: Open Patch"
 			}
 		],
 		"viewsContainers": {
@@ -63,10 +71,18 @@
 		},
 		"viewsWelcome": [
 			{
-			  "view": "localHistoryDiffBrowser",
-			  "contents": "Local History will appear here"
+				"view": "localHistoryDiffBrowser",
+				"contents": "Local History will appear here"
 			}
-		  ]
+		],
+		"menus": {
+			"view/item/context": [
+				{
+				  "command": "local-history.diff-browser.restore-patch",
+				  "when": "view == localHistoryDiffBrowser && viewItem == DiffItem"
+				}
+			  ]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",

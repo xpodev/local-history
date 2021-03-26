@@ -2,10 +2,9 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as Diff from 'diff';
-import * as Utilities from './utilities';
+import * as utils from './utilities';
 import { initGUI } from './gui';
 import { EOL } from 'os';
-import { TextEncoder } from 'util';
 
 export const root_dir = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
 export const lh_dir = vscode.Uri.joinPath(root_dir, '.lh');
@@ -62,7 +61,7 @@ function newPatch(fileDiff: diff, data: string): void {
 	}
 	const patchDate = new Date();
 	const patch: patch = {
-		date: Utilities.formatDate(patchDate, config.dateFormat),
+		date: utils.formatDate(patchDate, config.dateFormat),
 		content: data
 	}
 	fileDiff.patches.push(patch);
@@ -72,9 +71,9 @@ function newPatch(fileDiff: diff, data: string): void {
 function newCommit(fileDiff: diff, data: string | commit, name?: string): void {
 	const commitDate = new Date();
 	let createdCommit = {};
-	if(typeof data == 'string') {
+	if (typeof data == 'string') {
 		createdCommit = {
-			name: name ? name : `Commit${fileDiff ? fileDiff.commits.length : 1}-${Utilities.formatDate(commitDate, config.dateFormat)}`,
+			name: name ? name : `Commit${fileDiff ? fileDiff.commits.length : 1}-${utils.formatDate(commitDate, config.dateFormat)}`,
 			date: commitDate.toLocaleString(),
 			content: data
 		}
@@ -92,6 +91,10 @@ function diffPathOf(filePath: vscode.Uri): vscode.Uri {
 	return vscode.Uri.joinPath(lh_dir, `${relativeFilePath}.json`);
 }
 
+export function tempFileOf(filePath: vscode.Uri): vscode.Uri {
+	return vscode.Uri.joinPath(lh_dir, `.temp/${vscode.workspace.asRelativePath(filePath)}.tmp`);
+}
+
 export async function loadFileDiff(filePath: vscode.Uri): Promise<diff | undefined> {
 	const diffPath = diffPathOf(filePath);
 	try {
@@ -101,13 +104,13 @@ export async function loadFileDiff(filePath: vscode.Uri): Promise<diff | undefin
 			return undefined;
 		}
 	} catch (err) {
-		console.log(err);
+		return undefined;
 	}
 }
 
 async function saveFileDiff(filePath: vscode.Uri, fileDiff: diff): Promise<void> {
 	const diffPath = diffPathOf(filePath);
-	await vscode.workspace.fs.writeFile(diffPath, encode(JSON.stringify(fileDiff, null, 4)));
+	await vscode.workspace.fs.writeFile(diffPath, utils.encode(JSON.stringify(fileDiff, null, 4)));
 }
 
 async function loadIgnoreFile(): Promise<void> {
@@ -130,20 +133,22 @@ async function restorePatch(): Promise<void> {
 }
 
 export async function restorePatchA(filePath: vscode.Uri, patchId: number): Promise<void> {
-	const patched = await getPatched(filePath, patchId);
-	if (patched) {
-		const fileDiff = await loadFileDiff(filePath);
-		await vscode.workspace.fs.writeFile(filePath, (new TextEncoder()).encode(patched));
+	const fileDiff = await loadFileDiff(filePath);
+	if (fileDiff) {
+		const patched = await getPatched(fileDiff, patchId);
+		await vscode.workspace.fs.writeFile(filePath, (utils.encode(patched)));
 		fileDiff!.activePatch = patchId;
 		saveFileDiff(filePath, fileDiff!);
 	}
 }
 
-export async function getPatched(filePath: vscode.Uri, patchId: number): Promise<string | undefined> {
-	const fileDiff = await loadFileDiff(filePath);
+export async function getPatched(fileDiff: diff, patchId: number): Promise<string | undefined> {
 	if (fileDiff) {
 		if (!patchId || patchId > fileDiff.patches.length) {
 			patchId = fileDiff.patches.length;
+		}
+		if (patchId == 0) {
+			return fileDiff.commits[fileDiff.activeCommit - 1].content;
 		}
 		let patched = fileDiff.commits[fileDiff.activeCommit - 1].content;
 		for (let i = 0; i < patchId; i++) {
@@ -153,7 +158,6 @@ export async function getPatched(filePath: vscode.Uri, patchId: number): Promise
 		}
 		return patched;
 	} else {
-		vscode.window.showErrorMessage(`Diff info not found on file "${filePath}"`);
 		return undefined;
 	}
 }
@@ -172,7 +176,7 @@ export async function restoreCommitA(filePath: vscode.Uri, commitId: number): Pr
 		if (!commitId || commitId > fileDiff.commits.length) {
 			commitId = fileDiff.commits.length;
 		}
-		await vscode.workspace.fs.writeFile(filePath, (new TextEncoder()).encode(fileDiff.commits[commitId - 1].content));
+		await vscode.workspace.fs.writeFile(filePath, (utils.encode(fileDiff.commits[commitId - 1].content)));
 		fileDiff.activeCommit = commitId;
 		await saveFileDiff(filePath, fileDiff);
 	} else {
@@ -192,7 +196,7 @@ export async function createCommit(filePath?: vscode.Uri) {
 	let commitName = await vscode.window.showInputBox();
 	const commitDate = new Date();
 	if (!commitName) {
-		commitName = `Commit${fileDiff ? fileDiff.commits.length : 1}-${Utilities.formatDate(commitDate, config.dateFormat)}`;
+		commitName = `Commit${fileDiff ? fileDiff.commits.length : 1}-${utils.formatDate(commitDate, config.dateFormat)}`;
 	}
 	const createdCommit: commit = {
 		name: commitName,
@@ -214,7 +218,7 @@ function createDiffFile(filePath: vscode.Uri, initCommit?: commit) {
 		commits: [],
 		patches: []
 	};
-	if(initCommit) {
+	if (initCommit) {
 		newCommit(fileDiff, initCommit);
 	}
 	createFile(diffPathOf(filePath), JSON.stringify(fileDiff, null, 4));
@@ -227,33 +231,30 @@ async function init(): Promise<void> {
 		if (!(await fileExists(lh_dir))) {
 			await vscode.workspace.fs.createDirectory(lh_dir);
 		}
-		await vscode.workspace.fs.writeFile(lh_ignore_file, encode(`.lh/*${EOL}`));
+		await vscode.workspace.fs.writeFile(lh_ignore_file, utils.encode(`.lh/*${EOL}`));
 	}
 }
 
-async function createFile(filePath: vscode.Uri, data?: string | undefined) {
+export async function createFile(filePath: vscode.Uri, data?: string | undefined) {
 	if (await fileExists(filePath)) {
 		return;
 	}
 	await vscode.workspace.fs.createDirectory(parentFolder(filePath));
-	await vscode.workspace.fs.writeFile(filePath, encode(data));
+	await vscode.workspace.fs.writeFile(filePath, utils.encode(data));
 }
 
-async function fileExists(fileUri: vscode.Uri): Promise<boolean> {
+export async function fileExists(filePath: vscode.Uri): Promise<boolean> {
 	try {
-		const f = await vscode.workspace.fs.stat(fileUri);
-		return true;
-	} catch (err) {
+		const f = await vscode.workspace.fs.stat(filePath);
+		f;
+	} catch {
 		return false;
 	}
+	return true;
 }
 
 function parentFolder(uriPath: vscode.Uri): vscode.Uri {
 	return vscode.Uri.joinPath(uriPath, '..');
-}
-
-function encode(str: string | undefined): Uint8Array {
-	return (new TextEncoder()).encode(str);
 }
 
 // this method is called when your extension is activated

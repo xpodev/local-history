@@ -1,0 +1,25 @@
+{
+    "activeCommit": 1,
+    "activePatch": 3,
+    "commits": [
+        {
+            "name": "Commit0-26-03-21",
+            "date": "26.3.2021, 17:37:39",
+            "content": "textext - init"
+        }
+    ],
+    "patches": [
+        {
+            "date": "26-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,1 +1,6 @@\n-textext - init\n\\ No newline at end of file\n+textext - init\r\n+1\r\n+2\r\n+3\r\n+4\r\n+5 - Patch 1\n\\ No newline at end of file\n"
+        },
+        {
+            "date": "26-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -2,5 +2,7 @@\n 1\r\n 2\r\n 3\r\n 4\r\n-5 - Patch 1\n\\ No newline at end of file\n+5 - Patch 1\r\n+\r\n+Patch 2\n\\ No newline at end of file\n"
+        },
+        {
+            "date": "26-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -0,0 +1,6 @@\n+textext - init\r\n+1 - Patch 3\r\n+4\r\n+5 - Patch 1\r\n+\r\n+Patch 2\n\\ No newline at end of file\n"
+        }
+    ]
+}
