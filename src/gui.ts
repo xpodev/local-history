@@ -19,11 +19,6 @@ class DiffBrowserItem extends vscode.TreeItem {
     }
 
     public readonly isFolder;
-
-    iconPath = {
-        light: path.join(__filename, '..', '..', 'media', 'logo.svg'),
-        dark: path.join(__filename, '..', '..', 'media', 'logo.svg'),
-    };
 }
 
 class DiffItem extends DiffBrowserItem {
@@ -36,6 +31,11 @@ class DiffItem extends DiffBrowserItem {
         public readonly command?: vscode.Command
     ) {
         super(label, collapsibleState, command);
+        if (this.type == lh.DiffType.Commit) {
+            this.description = this.diff.commits[index].date;
+        } else if (this.type == lh.DiffType.Patch) {
+            this.description = this.diff.patches[index].date;
+        }
     }
 
     contextValue = 'browserDiffItem';
@@ -104,7 +104,7 @@ class ApplyPatch implements vscode.Command {
 }
 
 class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
-    constructor(private workspaceRoot: vscode.Uri) {
+    constructor() {
 
     }
 
@@ -120,7 +120,6 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
     }
 
     getChildren(element?: PathItem): vscode.ProviderResult<PathItem[]> {
-        return Promise.resolve(this.scanFolder(element ? element.uri : lh.root_dir));
         return Promise.resolve(this.scanFolder(element ? element.resourceUri : lh.ROOT_DIR));
     }
 
@@ -129,7 +128,6 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
         const folders: PathItem[] = [];
         const files: PathItem[] = [];
         f.forEach((value) => {
-            if (vscode.Uri.joinPath(folderPath, value[0]).path === lh.lh_dir.path) {
             if (vscode.Uri.joinPath(folderPath, value[0]).path === lh.LH_DIR.path) {
                 return;
             }
@@ -159,16 +157,11 @@ class PathItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly uri: vscode.Uri,
+        public readonly resourceUri: vscode.Uri,
         public readonly command?: vscode.Command
     ) {
         super(label, collapsibleState);
     }
-
-    iconPath = {
-        light: path.join(__filename, '..', '..', 'media', 'logo.svg'),
-        dark: path.join(__filename, '..', '..', 'media', 'logo.svg'),
-    };
 
     contextValue = 'browserPathItem';
 }
@@ -229,7 +222,7 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
 
 }
 
-const browserNodeProvider = new BrowserNodeProvider(lh.root_dir);
+const browserNodeProvider = new BrowserNodeProvider();
 const diffNodeProvider = new DiffNodeProvider();
 
 async function openCommit(fileDiff: lh.diff, commitIndex: number) {
@@ -306,6 +299,9 @@ export function initGUI() {
     });
     vscode.workspace.onDidRenameFiles((e) => {
         browserNodeProvider.refresh();
+        diffNodeProvider.refresh();
+    });
+    vscode.workspace.onDidChangeTextDocument((e) => {
         diffNodeProvider.refresh();
     });
     vscode.workspace.onDidChangeWorkspaceFolders((e) => {
