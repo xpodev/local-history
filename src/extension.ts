@@ -12,7 +12,10 @@ export const temp_dir = vscode.Uri.joinPath(lh_dir, '__temp__');
 const lh_ignore_file = vscode.Uri.joinPath(lh_dir, '.lhignore');
 let lh_ignore: string[] = [];
 
-
+export enum DiffType {
+    Commit,
+    Patch
+}
 
 const config = {
 	dateFormat: "dd-MM-yy"

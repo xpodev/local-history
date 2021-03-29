@@ -36,8 +36,8 @@
 				"title": "Local History: Open Source"
 			},
 			{
-				"command": "local-history.diff-browser.restore-patch",
-				"title": "Restore Patch"
+				"command": "local-history.diff-browser.restore",
+				"title": "Restore"
 			},
 			{
 				"command": "local-history.diff-browser.open-commit",
@@ -82,10 +82,10 @@
 		"menus": {
 			"view/item/context": [
 				{
-				  "command": "local-history.diff-browser.restore-patch",
-				  "when": "view == localHistoryDiffBrowser && viewItem == browserDiffItem"
+					"command": "local-history.diff-browser.restore",
+					"when": "view == localHistoryDiffBrowser && viewItem == browserDiffItem"
 				}
-			  ]
+			]
 		}
 	},
 	"scripts": {

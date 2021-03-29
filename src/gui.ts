@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as lh from './extension';
-import * as utils from './utilities';
 import * as path from 'path';
+
 
 class DiffBrowserItem extends vscode.TreeItem {
 
@@ -32,6 +32,7 @@ class DiffItem extends DiffBrowserItem {
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
         public readonly diff: lh.diff,
         public readonly index: number,
+        public readonly type: lh.DiffType,
         public readonly command?: vscode.Command
     ) {
         super(label, collapsibleState, command);
@@ -206,11 +207,11 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
         if (fileDiff) {
             fileDiff.commits.forEach((value, index) => {
                 const onOpenCommit = new OpenCommitCmd("Local History: Open Commit", "local-history.diff-browser.open-commit", [fileDiff, index])
-                this.currentCommits.unshift(new DiffItem(fileDiff.commits[index].name, vscode.TreeItemCollapsibleState.None, fileDiff, index, onOpenCommit));
+                this.currentCommits.unshift(new DiffItem(fileDiff.commits[index].name, vscode.TreeItemCollapsibleState.None, fileDiff, index, lh.DiffType.Commit, onOpenCommit));
             });
             fileDiff.patches.forEach((value, index) => {
                 const onOpenPatch = new OpenPatchCmd("Local History: Open Patch", "local-history.diff-browser.open-patch", [fileDiff, index])
-                this.currentPatches.unshift(new DiffItem(`patch-${index + 1}`, vscode.TreeItemCollapsibleState.None, fileDiff, index, onOpenPatch));
+                this.currentPatches.unshift(new DiffItem(`patch-${index + 1}`, vscode.TreeItemCollapsibleState.None, fileDiff, index, lh.DiffType.Patch, onOpenPatch));
             });
         }
         this.refresh();
@@ -258,6 +259,10 @@ async function openPatch(fileDiff: lh.diff, patchIndex: number) {
     // vscode.workspace.openTextDocument({ content: patched });
 }
 
+async function restoreCommit(selectedItem: DiffItem) {
+    lh.restoreCommitA(lh.sourceFileOf(selectedItem.diff), selectedItem.index);
+}
+
 async function restorePatch(selectedItem: DiffItem) {
     lh.restorePatchA(lh.sourceFileOf(selectedItem.diff), selectedItem.index);
 }
@@ -276,8 +281,12 @@ export function initGUI() {
     vscode.commands.registerCommand('local-history.diff-browser.open-patch', async (fileDiff: lh.diff, index: number) => {
         await openPatch(fileDiff, index);
     });
-    vscode.commands.registerCommand('local-history.diff-browser.restore-patch', async (selectedItem: DiffItem) => {
-        await restorePatch(selectedItem);
+    vscode.commands.registerCommand('local-history.diff-browser.restore', async (selectedItem: DiffItem) => {
+        if(selectedItem.type == lh.DiffType.Commit) {
+            await restoreCommit(selectedItem);
+        } else if(selectedItem.type == lh.DiffType.Patch) {
+            await restorePatch(selectedItem);
+        }
     })
 
     vscode.workspace.onDidCreateFiles((e) => {
