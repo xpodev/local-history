@@ -11,7 +11,7 @@ class DiffBrowserItem extends vscode.TreeItem {
         public readonly command?: vscode.Command
     ) {
         super(label, collapsibleState);
-        if(this.collapsibleState == vscode.TreeItemCollapsibleState.None) {
+        if (this.collapsibleState == vscode.TreeItemCollapsibleState.None) {
             this.isFolder = false;
         } else {
             this.isFolder = true;
@@ -125,26 +125,29 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
 
     async scanFolder(folderPath: vscode.Uri): Promise<PathItem[]> {
         const f = await vscode.workspace.fs.readDirectory(folderPath);
-        const toRet: PathItem[] = [];
+        const folders: PathItem[] = [];
+        const files: PathItem[] = [];
         f.forEach((value) => {
             if (vscode.Uri.joinPath(folderPath, value[0]).path === lh.lh_dir.path) {
                 return;
             }
             let collapsibleState;
+            const itemPath = vscode.Uri.joinPath(folderPath, value[0]);
             switch (value[1]) {
                 case vscode.FileType.File:
                     collapsibleState = vscode.TreeItemCollapsibleState.None;
+                    files.push(new PathItem(value[0], collapsibleState, itemPath, new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [itemPath])));
                     break;
                 case vscode.FileType.Directory:
                     collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+                    folders.push(new PathItem(value[0], collapsibleState, itemPath, new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [itemPath])));
                     break;
                 default:
-                    collapsibleState = vscode.TreeItemCollapsibleState.None;
+                    return;
             }
-            const itemPath = vscode.Uri.joinPath(folderPath, value[0]);
-            toRet.push(new PathItem(value[0], collapsibleState, itemPath, new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [itemPath])))
-        })
-        return toRet;
+
+        });
+        return folders.concat(files);
     }
 
 }
@@ -189,10 +192,10 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
     }
 
     getChildren(element?: DiffBrowserItem): vscode.ProviderResult<DiffBrowserItem[]> {
-        if(element) {
-            if(element.label == "Commits") {
+        if (element) {
+            if (element.label == "Commits") {
                 return Promise.resolve(this.currentCommits);
-            } else if(element.label == "Patches") {
+            } else if (element.label == "Patches") {
                 return Promise.resolve(this.currentPatches);
             }
         } else {
@@ -271,7 +274,9 @@ export function initGUI() {
     vscode.window.registerTreeDataProvider('localHistoryFileBrowser', browserNodeProvider);
     vscode.window.registerTreeDataProvider('localHistoryDiffBrowser', diffNodeProvider);
 
-    vscode.commands.registerCommand('local-history.refresh-file-browser', browserNodeProvider.refresh);
+    vscode.commands.registerCommand('local-history.refresh-file-browser', () => {
+        browserNodeProvider.refresh();
+    });
     vscode.commands.registerCommand('local-history.diff-browser.open-source', async (filePath: vscode.Uri) => {
         await diffNodeProvider.selectFile(filePath);
     });
@@ -282,9 +287,9 @@ export function initGUI() {
         await openPatch(fileDiff, index);
     });
     vscode.commands.registerCommand('local-history.diff-browser.restore', async (selectedItem: DiffItem) => {
-        if(selectedItem.type == lh.DiffType.Commit) {
+        if (selectedItem.type == lh.DiffType.Commit) {
             await restoreCommit(selectedItem);
-        } else if(selectedItem.type == lh.DiffType.Patch) {
+        } else if (selectedItem.type == lh.DiffType.Patch) {
             await restorePatch(selectedItem);
         }
     })
@@ -298,6 +303,10 @@ export function initGUI() {
         diffNodeProvider.refresh();
     });
     vscode.workspace.onDidRenameFiles((e) => {
+        browserNodeProvider.refresh();
+        diffNodeProvider.refresh();
+    });
+    vscode.workspace.onDidChangeWorkspaceFolders((e) => {
         browserNodeProvider.refresh();
         diffNodeProvider.refresh();
     });

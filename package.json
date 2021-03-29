@@ -28,8 +28,12 @@
 				"title": "Local History: Create Commit"
 			},
 			{
-				"command": "local-history.refresh-file-brwoser",
-				"title": "Local History: Refresh File Browser"
+				"command": "local-history.refresh-file-browser",
+				"title": "Refresh",
+				"icon": {
+					"light": "$(search-refresh)",
+					"dark": "$(search-refresh)"
+				}
 			},
 			{
 				"command": "local-history.diff-browser.open-source",
@@ -80,6 +84,13 @@
 			}
 		],
 		"menus": {
+			"view/title": [
+				{
+					"command": "local-history.refresh-file-browser",
+					"when": "view == localHistoryFileBrowser",
+					"group": "navigation"
+				}
+			],
 			"view/item/context": [
 				{
 					"command": "local-history.diff-browser.restore",
