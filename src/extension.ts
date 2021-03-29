@@ -10,6 +10,11 @@ export const root_dir = vscode.workspace.workspaceFolders?.length ? vscode.works
 export const lh_dir = vscode.Uri.joinPath(root_dir, '.lh');
 export const temp_dir = vscode.Uri.joinPath(lh_dir, '__temp__');
 const lh_ignore_file = vscode.Uri.joinPath(lh_dir, '.lhignore');
+export const ROOT_DIR = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
+export const LH_DIR = vscode.Uri.joinPath(ROOT_DIR, '.lh');
+export const TEMP_DIR = vscode.Uri.joinPath(LH_DIR, '__temp__');
+const LH_IGNORE_FILE = vscode.Uri.joinPath(LH_DIR, '.lhignore');
+const NULL_PATCH = Diff.createPatch('', '', '');
 let lh_ignore: string[] = [];
 
 export enum DiffType {
@@ -29,6 +34,7 @@ const onSave = vscode.workspace.onWillSaveTextDocument(async (document) => {
 async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: string): Promise<void> {
 	const filePath = document.document.uri;
 	if (filePath.path === lh_ignore_file.path) {
+	if (filePath.path === LH_IGNORE_FILE.path) {
 		await loadIgnoreFile();
 	}
 	if (isIgnored(filePath)) {
@@ -98,14 +104,17 @@ function newDiff(filePath: vscode.Uri): diff {
 function diffPathOf(filePath: vscode.Uri): vscode.Uri {
 	const relativeFilePath = vscode.workspace.asRelativePath(filePath);
 	return vscode.Uri.joinPath(lh_dir, `${relativeFilePath}.json`);
+	return vscode.Uri.joinPath(LH_DIR, `${relativeFilePath}.json`);
 }
 
 export function tempFileOf(filePath: vscode.Uri): vscode.Uri {
 	return vscode.Uri.joinPath(temp_dir, `tmp-${vscode.workspace.asRelativePath(filePath)}`);
+	return vscode.Uri.joinPath(TEMP_DIR, `tmp-${vscode.workspace.asRelativePath(filePath)}`);
 }
 
 export function sourceFileOf(fileDiff: diff): vscode.Uri {
 	return vscode.Uri.joinPath(root_dir, fileDiff.sourceFile);
+	return vscode.Uri.joinPath(ROOT_DIR, fileDiff.sourceFile);
 }
 
 export async function loadFileDiff(filePath: vscode.Uri): Promise<diff | undefined> {
@@ -250,15 +259,21 @@ function createDiffFile(filePath: vscode.Uri, initCommit?: commit) {
 
 async function init(): Promise<void> {
 	if (await fileExists(lh_ignore_file)) {
+	if (await fileExists(LH_IGNORE_FILE)) {
 		return;
 	} else {
 		if (!(await fileExists(lh_dir))) {
 			await vscode.workspace.fs.createDirectory(lh_dir);
+		if (!(await fileExists(LH_DIR))) {
+			await vscode.workspace.fs.createDirectory(LH_DIR);
 		}
 		if (!(await fileExists(temp_dir))) {
 			await vscode.workspace.fs.createDirectory(temp_dir);
+		if (!(await fileExists(TEMP_DIR))) {
+			await vscode.workspace.fs.createDirectory(TEMP_DIR);
 		}
 		await vscode.workspace.fs.writeFile(lh_ignore_file, utils.encode(`.lh/*${EOL}`));
+		await vscode.workspace.fs.writeFile(LH_IGNORE_FILE, utils.encode(`.lh/*${EOL}`));
 	}
 }
 

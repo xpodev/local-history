@@ -121,6 +121,7 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
 
     getChildren(element?: PathItem): vscode.ProviderResult<PathItem[]> {
         return Promise.resolve(this.scanFolder(element ? element.uri : lh.root_dir));
+        return Promise.resolve(this.scanFolder(element ? element.resourceUri : lh.ROOT_DIR));
     }
 
     async scanFolder(folderPath: vscode.Uri): Promise<PathItem[]> {
@@ -129,6 +130,7 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
         const files: PathItem[] = [];
         f.forEach((value) => {
             if (vscode.Uri.joinPath(folderPath, value[0]).path === lh.lh_dir.path) {
+            if (vscode.Uri.joinPath(folderPath, value[0]).path === lh.LH_DIR.path) {
                 return;
             }
             let collapsibleState;
