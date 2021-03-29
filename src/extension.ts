@@ -6,10 +6,6 @@ import * as utils from './utilities';
 import { initGUI } from './gui';
 import { EOL } from 'os';
 
-export const root_dir = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
-export const lh_dir = vscode.Uri.joinPath(root_dir, '.lh');
-export const temp_dir = vscode.Uri.joinPath(lh_dir, '__temp__');
-const lh_ignore_file = vscode.Uri.joinPath(lh_dir, '.lhignore');
 export const ROOT_DIR = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
 export const LH_DIR = vscode.Uri.joinPath(ROOT_DIR, '.lh');
 export const TEMP_DIR = vscode.Uri.joinPath(LH_DIR, '__temp__');
@@ -18,8 +14,8 @@ const NULL_PATCH = Diff.createPatch('', '', '');
 let lh_ignore: string[] = [];
 
 export enum DiffType {
-    Commit,
-    Patch
+	Commit,
+	Patch
 }
 
 const config = {
@@ -33,7 +29,6 @@ const onSave = vscode.workspace.onWillSaveTextDocument(async (document) => {
 
 async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: string): Promise<void> {
 	const filePath = document.document.uri;
-	if (filePath.path === lh_ignore_file.path) {
 	if (filePath.path === LH_IGNORE_FILE.path) {
 		await loadIgnoreFile();
 	}
@@ -46,7 +41,7 @@ async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: 
 		if (fileDiff.commits.length < 1) {
 			newCommit(fileDiff, newData);
 		} else {
-			const lastCommit = fileDiff.commits[fileDiff.activeCommit - 1].content;
+			const lastCommit = fileDiff.commits[fileDiff.activeCommit].content;
 			if (newData !== diskData || newData !== lastCommit) {
 				const patch = Diff.createPatch('', newData !== diskData ? diskData : lastCommit, newData);
 				newPatch(fileDiff, patch);
@@ -61,24 +56,24 @@ async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: 
 }
 
 function newPatch(fileDiff: diff, data: string): void {
-	if (fileDiff.activePatch < fileDiff.patches.length) {
-		fileDiff.patches = fileDiff.patches.slice(0, fileDiff.activePatch);
+	if (fileDiff.activePatch <= fileDiff.patches.length) {
+		fileDiff.patches = fileDiff.patches.slice(0, fileDiff.activePatch + 1);
 	}
 	const patchDate = new Date();
 	const patch: patch = {
-		date: utils.formatDate(patchDate, config.dateFormat),
+		date: patchDate.toLocaleString(),
 		content: data
 	}
 	fileDiff.patches.push(patch);
-	fileDiff.activePatch = fileDiff.patches.length;
+	fileDiff.activePatch = fileDiff.patches.length - 1;
 }
 
 function newCommit(fileDiff: diff, data: string | commit, name?: string): void {
 	const commitDate = new Date();
-	let createdCommit = {};
+	let createdCommit: commit;
 	if (typeof data == 'string') {
 		createdCommit = {
-			name: name ? name : `Commit${fileDiff ? fileDiff.commits.length : 1}-${utils.formatDate(commitDate, config.dateFormat)}`,
+			name: name ? name : `Commit-${fileDiff.commits.length}`,
 			date: commitDate.toLocaleString(),
 			content: data
 		}
@@ -86,9 +81,12 @@ function newCommit(fileDiff: diff, data: string | commit, name?: string): void {
 		createdCommit = data;
 	}
 	fileDiff.commits.push(createdCommit as commit);
-	fileDiff.activeCommit = fileDiff.commits.length;
+	fileDiff.activeCommit = fileDiff.commits.length - 1;
 	fileDiff.activePatch = 0;
 	fileDiff.patches = [];
+
+	// Elazar think it's better like that
+	newPatch(fileDiff, NULL_PATCH);
 }
 
 function newDiff(filePath: vscode.Uri): diff {
@@ -103,17 +101,14 @@ function newDiff(filePath: vscode.Uri): diff {
 
 function diffPathOf(filePath: vscode.Uri): vscode.Uri {
 	const relativeFilePath = vscode.workspace.asRelativePath(filePath);
-	return vscode.Uri.joinPath(lh_dir, `${relativeFilePath}.json`);
 	return vscode.Uri.joinPath(LH_DIR, `${relativeFilePath}.json`);
 }
 
 export function tempFileOf(filePath: vscode.Uri): vscode.Uri {
-	return vscode.Uri.joinPath(temp_dir, `tmp-${vscode.workspace.asRelativePath(filePath)}`);
 	return vscode.Uri.joinPath(TEMP_DIR, `tmp-${vscode.workspace.asRelativePath(filePath)}`);
 }
 
 export function sourceFileOf(fileDiff: diff): vscode.Uri {
-	return vscode.Uri.joinPath(root_dir, fileDiff.sourceFile);
 	return vscode.Uri.joinPath(ROOT_DIR, fileDiff.sourceFile);
 }
 
@@ -136,7 +131,7 @@ async function saveFileDiff(filePath: vscode.Uri, fileDiff: diff): Promise<void>
 }
 
 async function loadIgnoreFile(): Promise<void> {
-	lh_ignore = (await vscode.workspace.fs.readFile(lh_ignore_file)).toString().split(EOL).filter(Boolean);
+	lh_ignore = (await vscode.workspace.fs.readFile(LH_IGNORE_FILE)).toString().split(EOL).filter(Boolean);
 }
 
 function isIgnored(filePath: vscode.Uri): boolean {
@@ -258,21 +253,15 @@ function createDiffFile(filePath: vscode.Uri, initCommit?: commit) {
 }
 
 async function init(): Promise<void> {
-	if (await fileExists(lh_ignore_file)) {
 	if (await fileExists(LH_IGNORE_FILE)) {
 		return;
 	} else {
-		if (!(await fileExists(lh_dir))) {
-			await vscode.workspace.fs.createDirectory(lh_dir);
 		if (!(await fileExists(LH_DIR))) {
 			await vscode.workspace.fs.createDirectory(LH_DIR);
 		}
-		if (!(await fileExists(temp_dir))) {
-			await vscode.workspace.fs.createDirectory(temp_dir);
 		if (!(await fileExists(TEMP_DIR))) {
 			await vscode.workspace.fs.createDirectory(TEMP_DIR);
 		}
-		await vscode.workspace.fs.writeFile(lh_ignore_file, utils.encode(`.lh/*${EOL}`));
 		await vscode.workspace.fs.writeFile(LH_IGNORE_FILE, utils.encode(`.lh/*${EOL}`));
 	}
 }
@@ -300,10 +289,6 @@ function parentFolder(uriPath: vscode.Uri): vscode.Uri {
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
-
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	// console.log('Congratulations, your extension "local-history" is now active!');
 	await init();
 	await loadIgnoreFile();
 	initGUI();

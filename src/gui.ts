@@ -88,21 +88,6 @@ class OpenDiffCmd implements vscode.Command {
 
 }
 
-class ApplyPatch implements vscode.Command {
-    constructor(
-        public readonly title: string,
-        public readonly command: string,
-        public readonly args?: any[],
-        public readonly tooltip?: string
-    ) {
-
-    }
-
-    get arguments() {
-        return this.args;
-    }
-}
-
 class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
     constructor() {
 
@@ -236,25 +221,10 @@ async function openPatch(fileDiff: lh.diff, patchIndex: number) {
     const sourceFile = lh.sourceFileOf(fileDiff);
     const patched = await lh.getPatched(fileDiff, patchIndex);
     if (patched) {
-        // const diff: string = Diff.createTwoFilesPatch('', '', sourcePanel.webview.html.split("<br>").join('\n'), patched, undefined, undefined, { context: 100 });
-        // let diffStr = diff.split(`+++ \n`);
-        // diffStr.shift();
-        // if (!patchedPanel) {
-        //     patchedPanel = vscode.window.createWebviewPanel(
-        //         'patchedViewer', // Identifies the type of the webview. Used internally
-        //         `Patched - ${patchId}`, // Title of the panel displayed to the user
-        //         vscode.ViewColumn.Two, // Editor column to show the new webview panel in.
-        //         {} // Webview options. More on these later.
-        //     );
-        // }
-        // patchedPanel.title = `Diff - ${fileDiff.patches[index].date}`;
-        // patchedPanel.webview.html = patched.split("\n").join("<br>");
-        // patchedPanel.webview.html = diffStr.join('').split('\n').join("<br>");
         const tempFile = lh.tempFileOf(sourceFile);
         await lh.writeFile(tempFile, patched);
         vscode.commands.executeCommand("vscode.diff", sourceFile, tempFile);
     }
-    // vscode.workspace.openTextDocument({ content: patched });
 }
 
 async function restoreCommit(selectedItem: DiffItem) {
