@@ -8,6 +8,7 @@ import { EOL } from 'os';
 
 export const root_dir = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
 export const lh_dir = vscode.Uri.joinPath(root_dir, '.lh');
+export const temp_dir = vscode.Uri.joinPath(lh_dir, '__temp__');
 const lh_ignore_file = vscode.Uri.joinPath(lh_dir, '.lhignore');
 let lh_ignore: string[] = [];
 
@@ -92,7 +93,8 @@ function diffPathOf(filePath: vscode.Uri): vscode.Uri {
 }
 
 export function tempFileOf(filePath: vscode.Uri): vscode.Uri {
-	return vscode.Uri.joinPath(lh_dir, `.temp/${vscode.workspace.asRelativePath(filePath)}.tmp`);
+	return vscode.Uri.joinPath(temp_dir, `tmp-${vscode.workspace.asRelativePath(filePath)}`);
+}
 }
 
 export async function loadFileDiff(filePath: vscode.Uri): Promise<diff | undefined> {
