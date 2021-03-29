@@ -1,0 +1,57 @@
+{
+    "activeCommit": 1,
+    "activePatch": 11,
+    "commits": [
+        {
+            "name": "Commit0-28-03-21",
+            "date": "28.3.2021, 22:33:01",
+            "content": "import socket\r\n\r\ns = socket.socket(socket.AF_INT, socket.SOCK_STREAM)\r\n\r\ns.bind((\"0.0.0.0\", 5000))\r\ns.listen()"
+        }
+    ],
+    "patches": [
+        {
+            "date": "28-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -2,5 +2,12 @@\n \r\n s = socket.socket(socket.AF_INT, socket.SOCK_STREAM)\r\n \r\n s.bind((\"0.0.0.0\", 5000))\r\n-s.listen()\n\\ No newline at end of file\n+s.listen()\r\n+\r\n+while True:\r\n+    conn, addr = s.accept()\r\n+    data = conn.recv(4096)\r\n+    if data:\r\n+        print(data.decode())\r\n+        conn.send(data)\n\\ No newline at end of file\n"
+        },
+        {
+            "date": "28-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -9,5 +9,7 @@\n     conn, addr = s.accept()\r\n     data = conn.recv(4096)\r\n     if data:\r\n         print(data.decode())\r\n-        conn.send(data)\n\\ No newline at end of file\n+        conn.send(data)\r\n+\r\n+#this is a comment\n\\ No newline at end of file\n"
+        },
+        {
+            "date": "28-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -11,5 +11,9 @@\n     if data:\r\n         print(data.decode())\r\n         conn.send(data)\r\n \r\n-#this is a comment\n\\ No newline at end of file\n+#this is a comment\r\n+\r\n+def handler(data):\r\n+    if data == \"cmd1\":\r\n+        print(\"cmd 1\")\n\\ No newline at end of file\n"
+        },
+        {
+            "date": "28-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -14,6 +14,8 @@\n \r\n #this is a comment\r\n \r\n def handler(data):\r\n+    if data == \"error\":\r\n+        raise Exception(\"Whatever\")\r\n     if data == \"cmd1\":\r\n         print(\"cmd 1\")\n\\ No newline at end of file\n"
+        },
+        {
+            "date": "28-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,6 +1,14 @@\n import socket\r\n \r\n+\r\n+def handler(data):\r\n+    cmd = data.decode()\r\n+    if cmd == \"error\":\r\n+        raise Exception(\"Whatever\")\r\n+    if cmd == \"cmd1\":\r\n+        print(\"cmd 1\")\r\n+\r\n s = socket.socket(socket.AF_INT, socket.SOCK_STREAM)\r\n \r\n s.bind((\"0.0.0.0\", 5000))\r\n s.listen()\r\n@@ -9,13 +17,8 @@\n     conn, addr = s.accept()\r\n     data = conn.recv(4096)\r\n     if data:\r\n         print(data.decode())\r\n+        handler(data)\r\n         conn.send(data)\r\n \r\n-#this is a comment\r\n-\r\n-def handler(data):\r\n-    if data == \"error\":\r\n-        raise Exception(\"Whatever\")\r\n-    if data == \"cmd1\":\r\n\\ No newline at end of file\n-        print(\"cmd 1\")\n+#this is a comment\n\\ No newline at end of file\n"
+        },
+        {
+            "date": "29-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -7,9 +7,9 @@\n         raise Exception(\"Whatever\")\r\n     if cmd == \"cmd1\":\r\n         print(\"cmd 1\")\r\n \r\n-s = socket.socket(socket.AF_INT, socket.SOCK_STREAM)\r\n+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\r\n \r\n s.bind((\"0.0.0.0\", 5000))\r\n s.listen()\r\n \r\n"
+        },
+        {
+            "date": "29-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -7,9 +7,9 @@\n         raise Exception(\"Whatever\")\r\n     if cmd == \"cmd1\":\r\n         print(\"cmd 1\")\r\n \r\n-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\r\n+s = socket.socket(socket.AF_INT, socket.SOCK_STREAM)\r\n \r\n s.bind((\"0.0.0.0\", 5000))\r\n s.listen()\r\n \r\n"
+        },
+        {
+            "date": "29-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -7,9 +7,9 @@\n         raise Exception(\"Whatever\")\r\n     if cmd == \"cmd1\":\r\n         print(\"cmd 1\")\r\n \r\n-s = socket.socket(socket.AF_INT, socket.SOCK_STREAM)\r\n+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\r\n \r\n s.bind((\"0.0.0.0\", 5000))\r\n s.listen()\r\n \r\n"
+        },
+        {
+            "date": "29-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -7,9 +7,9 @@\n         raise Exception(\"Whatever\")\r\n     if cmd == \"cmd1\":\r\n         print(\"cmd 1\")\r\n \r\n-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\r\n+s = socket.socket(socket.AF_INT, socket.SOCK_STREAM)\r\n \r\n s.bind((\"0.0.0.0\", 5000))\r\n s.listen()\r\n \r\n"
+        },
+        {
+            "date": "29-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -7,9 +7,9 @@\n         raise Exception(\"Whatever\")\r\n     if cmd == \"cmd1\":\r\n         print(\"cmd 1\")\r\n \r\n-s = socket.socket(socket.AF_INT, socket.SOCK_STREAM)\r\n+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\r\n \r\n s.bind((\"0.0.0.0\", 5000))\r\n s.listen()\r\n \r\n"
+        },
+        {
+            "date": "29-03-21",
+            "content": "Index: \n===================================================================\n--- \n+++ \n@@ -7,9 +7,9 @@\n         raise Exception(\"Whatever\")\r\n     if cmd == \"cmd1\":\r\n         print(\"cmd 1\")\r\n \r\n-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\r\n+s = socket.socket(socket.AF_INT, socket.SOCK_STREAM)\r\n \r\n s.bind((\"0.0.0.0\", 5000))\r\n s.listen()\r\n \r\n"
+        }
+    ]
+}

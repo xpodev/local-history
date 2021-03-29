@@ -24,15 +24,15 @@ const onSave = vscode.workspace.onWillSaveTextDocument(async (document) => {
 });
 
 async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: string): Promise<void> {
-	const fullPath = document.document.uri;
-	if (fullPath.path === lh_ignore_file.path) {
+	const filePath = document.document.uri;
+	if (filePath.path === lh_ignore_file.path) {
 		await loadIgnoreFile();
 	}
-	if (isIgnored(fullPath)) {
+	if (isIgnored(filePath)) {
 		return;
 	}
 	const newData = document.document.getText();
-	let fileDiff = await loadFileDiff(fullPath);
+	let fileDiff = await loadFileDiff(filePath);
 	if (fileDiff) {
 		if (fileDiff.commits.length < 1) {
 			newCommit(fileDiff, newData);
@@ -44,16 +44,11 @@ async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: 
 			}
 		}
 	} else {
-		fileDiff = {
-			activeCommit: 0,
-			activePatch: 0,
-			commits: [],
-			patches: []
-		};
+		fileDiff = newDiff(filePath);
 		newCommit(fileDiff, newData);
-		await createFile(diffPathOf(fullPath));
+		await createFile(diffPathOf(filePath));
 	}
-	await saveFileDiff(fullPath, fileDiff!);
+	await saveFileDiff(filePath, fileDiff!);
 }
 
 function newPatch(fileDiff: diff, data: string): void {
@@ -85,6 +80,16 @@ function newCommit(fileDiff: diff, data: string | commit, name?: string): void {
 	fileDiff.activeCommit = fileDiff.commits.length;
 	fileDiff.activePatch = 0;
 	fileDiff.patches = [];
+}
+
+function newDiff(filePath: vscode.Uri): diff {
+	return {
+		sourceFile: vscode.workspace.asRelativePath(filePath),
+		activeCommit: 0,
+		activePatch: 0,
+		commits: [],
+		patches: []
+	};
 }
 
 function diffPathOf(filePath: vscode.Uri): vscode.Uri {
@@ -217,12 +222,7 @@ export async function createCommit(filePath?: vscode.Uri) {
 }
 
 function createDiffFile(filePath: vscode.Uri, initCommit?: commit) {
-	const fileDiff: diff = {
-		activeCommit: 0,
-		activePatch: 0,
-		commits: [],
-		patches: []
-	};
+	const fileDiff = newDiff(filePath);
 	if (initCommit) {
 		newCommit(fileDiff, initCommit);
 	}
