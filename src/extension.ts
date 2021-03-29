@@ -95,6 +95,9 @@ function diffPathOf(filePath: vscode.Uri): vscode.Uri {
 export function tempFileOf(filePath: vscode.Uri): vscode.Uri {
 	return vscode.Uri.joinPath(temp_dir, `tmp-${vscode.workspace.asRelativePath(filePath)}`);
 }
+
+export function sourceFileOf(fileDiff: diff): vscode.Uri {
+	return vscode.Uri.joinPath(root_dir, fileDiff.sourceFile);
 }
 
 export async function loadFileDiff(filePath: vscode.Uri): Promise<diff | undefined> {
@@ -280,6 +283,7 @@ export async function activate(context: vscode.ExtensionContext) {
 export function deactivate() { }
 
 export type diff = {
+	sourceFile: string,
 	activeCommit: number,
 	activePatch: number,
 	commits: commit[],

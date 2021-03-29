@@ -2,11 +2,6 @@ import * as vscode from 'vscode';
 import * as lh from './extension';
 import * as utils from './utilities';
 import * as path from 'path';
-import * as Diff from 'diff';
-import { EOL } from 'os';
-
-let sourcePanel: vscode.WebviewPanel;
-let patchedPanel: vscode.WebviewPanel;
 
 class DiffItem extends vscode.TreeItem {
 
@@ -87,7 +82,6 @@ class ApplyPatch implements vscode.Command {
     get arguments() {
         return this.args;
     }
-
 }
 
 class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
@@ -183,8 +177,8 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
         const fileDiff = await lh.loadFileDiff(filePath);
         if (fileDiff) {
             fileDiff.patches.forEach((value, index) => {
-                const onOpenPatch = new OpenPatchCmd("Local History: Open Patch", "local-history.open-patch", [fileDiff, index, filePath])
-                this.currentDiff.push(new DiffItem(`patch-${index + 1}`, vscode.TreeItemCollapsibleState.None, fileDiff, onOpenPatch));
+                const onOpenPatch = new OpenPatchCmd("Local History: Open Patch", "local-history.open-patch", [fileDiff, index])
+                this.currentDiff.unshift(new DiffItem(`patch-${index + 1}`, vscode.TreeItemCollapsibleState.None, fileDiff, onOpenPatch));
             });
         }
         this.refresh();
@@ -200,9 +194,10 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
 const browserNodeProvider = new BrowserNodeProvider(lh.root_dir);
 const diffNodeProvider = new DiffNodeProvider();
 
-async function openPatch(fileDiff: lh.diff, index: number, source: vscode.Uri) {
+async function openPatch(fileDiff: lh.diff, index: number) {
     const patchId = index + 1;
     const patched = await lh.getPatched(fileDiff, patchId);
+    const sourceFile = lh.sourceFileOf(fileDiff);
     if (patched) {
         // const diff: string = Diff.createTwoFilesPatch('', '', sourcePanel.webview.html.split("<br>").join('\n'), patched, undefined, undefined, { context: 100 });
         // let diffStr = diff.split(`+++ \n`);
@@ -218,13 +213,13 @@ async function openPatch(fileDiff: lh.diff, index: number, source: vscode.Uri) {
         // patchedPanel.title = `Diff - ${fileDiff.patches[index].date}`;
         // patchedPanel.webview.html = patched.split("\n").join("<br>");
         // patchedPanel.webview.html = diffStr.join('').split('\n').join("<br>");
-        const tempFile = lh.tempFileOf(source);
+        const tempFile = lh.tempFileOf(sourceFile);
         if (await lh.fileExists(tempFile)) {
             await vscode.workspace.fs.writeFile(tempFile, utils.encode(patched));
         } else {
             await lh.createFile(tempFile, patched);
         }
-        vscode.commands.executeCommand("vscode.diff", source, tempFile);
+        vscode.commands.executeCommand("vscode.diff", sourceFile, tempFile);
     }
     // vscode.workspace.openTextDocument({ content: patched });
 }
@@ -241,20 +236,20 @@ export function initGUI() {
     vscode.commands.registerCommand('local-history.open-source', async (filePath: vscode.Uri) => {
         await diffNodeProvider.selectFile(filePath);
     });
-    vscode.commands.registerCommand('local-history.open-patch', async (fileDiff: lh.diff, patchId: number, source: vscode.Uri) => {
-        await openPatch(fileDiff, patchId, source);
+    vscode.commands.registerCommand('local-history.open-patch', async (fileDiff: lh.diff, patchId: number) => {
+        await openPatch(fileDiff, patchId);
     });
 
     vscode.workspace.onDidCreateFiles((e) => {
         browserNodeProvider.refresh();
+        diffNodeProvider.refresh();
     });
     vscode.workspace.onDidDeleteFiles((e) => {
         browserNodeProvider.refresh();
+        diffNodeProvider.refresh();
     });
     vscode.workspace.onDidRenameFiles((e) => {
         browserNodeProvider.refresh();
-    });
-    vscode.workspace.onDidChangeTextDocument((e) => {
-        e;
+        diffNodeProvider.refresh();
     });
 }

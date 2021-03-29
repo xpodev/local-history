@@ -1,5 +1,4 @@
 import { TextEncoder } from "util";
-import * as crypto from 'crypto';
 
 const monthNames = [
     "January", "February", "March", "April", "May", "June", "July",
