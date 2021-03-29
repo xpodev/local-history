@@ -30,10 +30,7 @@
 			{
 				"command": "local-history.refresh-file-browser",
 				"title": "Refresh",
-				"icon": {
-					"light": "$(search-refresh)",
-					"dark": "$(search-refresh)"
-				}
+				"icon": "$(timeline-refresh)"
 			},
 			{
 				"command": "local-history.diff-browser.open-source",
