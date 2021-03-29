@@ -3,21 +3,39 @@ import * as lh from './extension';
 import * as utils from './utilities';
 import * as path from 'path';
 
-class DiffItem extends vscode.TreeItem {
+class DiffBrowserItem extends vscode.TreeItem {
 
     constructor(
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly uri: lh.diff,
         public readonly command?: vscode.Command
     ) {
         super(label, collapsibleState);
+        if(this.collapsibleState == vscode.TreeItemCollapsibleState.None) {
+            this.isFolder = false;
+        } else {
+            this.isFolder = true;
+        }
     }
+
+    public readonly isFolder;
 
     iconPath = {
         light: path.join(__filename, '..', '..', 'media', 'logo.svg'),
         dark: path.join(__filename, '..', '..', 'media', 'logo.svg'),
     };
+}
+
+class DiffItem extends DiffBrowserItem {
+    constructor(
+        public readonly label: string,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly diff: lh.diff,
+        public readonly index: number,
+        public readonly command?: vscode.Command
+    ) {
+        super(label, collapsibleState, command);
+    }
 
     contextValue = 'browserDiffItem';
 }
@@ -123,7 +141,7 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
                     collapsibleState = vscode.TreeItemCollapsibleState.None;
             }
             const itemPath = vscode.Uri.joinPath(folderPath, value[0]);
-            toRet.push(new PathItem(value[0], collapsibleState, itemPath, new OpenDiffCmd("Open Diff", "local-history.open-source", [itemPath])))
+            toRet.push(new PathItem(value[0], collapsibleState, itemPath, new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [itemPath])))
         })
         return toRet;
     }
@@ -149,43 +167,57 @@ class PathItem extends vscode.TreeItem {
     contextValue = 'browserPathItem';
 }
 
-class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
+class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
     constructor() {
 
     }
 
-    private _onDidChangeTreeData: vscode.EventEmitter<DiffItem | undefined | void> = new vscode.EventEmitter<DiffItem | undefined | void>();
-    readonly onDidChangeTreeData: vscode.Event<DiffItem | undefined | void> = this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: vscode.EventEmitter<DiffBrowserItem | undefined | void> = new vscode.EventEmitter<DiffBrowserItem | undefined | void>();
+    readonly onDidChangeTreeData: vscode.Event<DiffBrowserItem | undefined | void> = this._onDidChangeTreeData.event;
 
-    private currentDiff: DiffItem[] = [];
-    private rootDirectories: DiffItem[] = [];
+    private currentCommits: DiffBrowserItem[] = [];
+    private currentPatches: DiffBrowserItem[] = [];
+    private readonly rootDirectories: DiffBrowserItem[] = [new DiffBrowserItem('Commits', vscode.TreeItemCollapsibleState.Collapsed), new DiffBrowserItem('Patches', vscode.TreeItemCollapsibleState.Collapsed)];
 
     refresh(): void {
         this._onDidChangeTreeData.fire(undefined);
     }
 
-    getTreeItem(element: DiffItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
+    getTreeItem(element: DiffBrowserItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
         return element;
     }
 
-    getChildren(element?: DiffItem): vscode.ProviderResult<DiffItem[]> {
-        return Promise.resolve(this.currentDiff);
+    getChildren(element?: DiffBrowserItem): vscode.ProviderResult<DiffBrowserItem[]> {
+        if(element) {
+            if(element.label == "Commits") {
+                return Promise.resolve(this.currentCommits);
+            } else if(element.label == "Patches") {
+                return Promise.resolve(this.currentPatches);
+            }
+        } else {
+            return this.rootDirectories;
+        }
     }
 
     async selectFile(filePath: vscode.Uri) {
-        this.currentDiff = [];
+        this.currentCommits = [];
+        this.currentPatches = [];
         const fileDiff = await lh.loadFileDiff(filePath);
         if (fileDiff) {
+            fileDiff.commits.forEach((value, index) => {
+                const onOpenCommit = new OpenCommitCmd("Local History: Open Commit", "local-history.diff-browser.open-commit", [fileDiff, index])
+                this.currentCommits.unshift(new DiffItem(fileDiff.commits[index].name, vscode.TreeItemCollapsibleState.None, fileDiff, index, onOpenCommit));
+            });
             fileDiff.patches.forEach((value, index) => {
-                const onOpenPatch = new OpenPatchCmd("Local History: Open Patch", "local-history.open-patch", [fileDiff, index])
-                this.currentDiff.unshift(new DiffItem(`patch-${index + 1}`, vscode.TreeItemCollapsibleState.None, fileDiff, onOpenPatch));
+                const onOpenPatch = new OpenPatchCmd("Local History: Open Patch", "local-history.diff-browser.open-patch", [fileDiff, index])
+                this.currentPatches.unshift(new DiffItem(`patch-${index + 1}`, vscode.TreeItemCollapsibleState.None, fileDiff, index, onOpenPatch));
             });
         }
         this.refresh();
     }
 
     clearDiff() {
-        this.currentDiff = [];
+        this.currentPatches = [];
         this.refresh();
     }
 
@@ -194,10 +226,16 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
 const browserNodeProvider = new BrowserNodeProvider(lh.root_dir);
 const diffNodeProvider = new DiffNodeProvider();
 
-async function openPatch(fileDiff: lh.diff, index: number) {
-    const patchId = index + 1;
-    const patched = await lh.getPatched(fileDiff, patchId);
+async function openCommit(fileDiff: lh.diff, commitIndex: number) {
     const sourceFile = lh.sourceFileOf(fileDiff);
+    const tempFile = lh.tempFileOf(sourceFile);
+    await lh.writeFile(tempFile, await lh.getCommit(fileDiff, commitIndex));
+    vscode.commands.executeCommand("vscode.diff", sourceFile, tempFile);
+}
+
+async function openPatch(fileDiff: lh.diff, patchIndex: number) {
+    const sourceFile = lh.sourceFileOf(fileDiff);
+    const patched = await lh.getPatched(fileDiff, patchIndex);
     if (patched) {
         // const diff: string = Diff.createTwoFilesPatch('', '', sourcePanel.webview.html.split("<br>").join('\n'), patched, undefined, undefined, { context: 100 });
         // let diffStr = diff.split(`+++ \n`);
@@ -214,18 +252,14 @@ async function openPatch(fileDiff: lh.diff, index: number) {
         // patchedPanel.webview.html = patched.split("\n").join("<br>");
         // patchedPanel.webview.html = diffStr.join('').split('\n').join("<br>");
         const tempFile = lh.tempFileOf(sourceFile);
-        if (await lh.fileExists(tempFile)) {
-            await vscode.workspace.fs.writeFile(tempFile, utils.encode(patched));
-        } else {
-            await lh.createFile(tempFile, patched);
-        }
+        await lh.writeFile(tempFile, patched);
         vscode.commands.executeCommand("vscode.diff", sourceFile, tempFile);
     }
     // vscode.workspace.openTextDocument({ content: patched });
 }
 
-async function restorePatch(diff: DiffItem) {
-    
+async function restorePatch(selectedItem: DiffItem) {
+    lh.restorePatchA(lh.sourceFileOf(selectedItem.diff), selectedItem.index);
 }
 
 export function initGUI() {
@@ -233,12 +267,18 @@ export function initGUI() {
     vscode.window.registerTreeDataProvider('localHistoryDiffBrowser', diffNodeProvider);
 
     vscode.commands.registerCommand('local-history.refresh-file-browser', browserNodeProvider.refresh);
-    vscode.commands.registerCommand('local-history.open-source', async (filePath: vscode.Uri) => {
+    vscode.commands.registerCommand('local-history.diff-browser.open-source', async (filePath: vscode.Uri) => {
         await diffNodeProvider.selectFile(filePath);
     });
-    vscode.commands.registerCommand('local-history.open-patch', async (fileDiff: lh.diff, patchId: number) => {
-        await openPatch(fileDiff, patchId);
+    vscode.commands.registerCommand('local-history.diff-browser.open-commit', async (fileDiff: lh.diff, index: number) => {
+        await openCommit(fileDiff, index);
     });
+    vscode.commands.registerCommand('local-history.diff-browser.open-patch', async (fileDiff: lh.diff, index: number) => {
+        await openPatch(fileDiff, index);
+    });
+    vscode.commands.registerCommand('local-history.diff-browser.restore-patch', async (selectedItem: DiffItem) => {
+        await restorePatch(selectedItem);
+    })
 
     vscode.workspace.onDidCreateFiles((e) => {
         browserNodeProvider.refresh();

@@ -32,7 +32,7 @@
 				"title": "Local History: Refresh File Browser"
 			},
 			{
-				"command": "local-history.open-source",
+				"command": "local-history.diff-browser.open-source",
 				"title": "Local History: Open Source"
 			},
 			{
@@ -40,7 +40,11 @@
 				"title": "Restore Patch"
 			},
 			{
-				"command": "local-history.open-patch",
+				"command": "local-history.diff-browser.open-commit",
+				"title": "Local History: Open Commit"
+			},
+			{
+				"command": "local-history.diff-browser.open-patch",
 				"title": "Local History: Open Patch"
 			}
 		],
@@ -79,7 +83,7 @@
 			"view/item/context": [
 				{
 				  "command": "local-history.diff-browser.restore-patch",
-				  "when": "view == localHistoryDiffBrowser && viewItem == DiffItem"
+				  "when": "view == localHistoryDiffBrowser && viewItem == browserDiffItem"
 				}
 			  ]
 		}

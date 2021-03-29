@@ -46,7 +46,7 @@ async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: 
 	} else {
 		fileDiff = newDiff(filePath);
 		newCommit(fileDiff, newData);
-		await createFile(diffPathOf(filePath));
+		await writeFile(diffPathOf(filePath), JSON.stringify(fileDiff, null, 4));
 	}
 	await saveFileDiff(filePath, fileDiff!);
 }
@@ -142,34 +142,44 @@ async function restorePatch(): Promise<void> {
 	await restorePatchA(filePath, patchId);
 }
 
-export async function restorePatchA(filePath: vscode.Uri, patchId: number): Promise<void> {
+export async function restorePatchA(filePath: vscode.Uri, patchIndex: number): Promise<void> {
 	const fileDiff = await loadFileDiff(filePath);
 	if (fileDiff) {
-		const patched = await getPatched(fileDiff, patchId);
+		const patched = await getPatched(fileDiff, patchIndex);
 		await vscode.workspace.fs.writeFile(filePath, (utils.encode(patched)));
-		fileDiff!.activePatch = patchId;
+		fileDiff!.activePatch = patchIndex;
 		saveFileDiff(filePath, fileDiff!);
 	}
 }
 
-export async function getPatched(fileDiff: diff, patchId: number): Promise<string | undefined> {
-	if (fileDiff) {
-		if (!patchId || patchId > fileDiff.patches.length) {
-			patchId = fileDiff.patches.length;
+export async function getCommit(fileDiff: diff, commitIndex: number): Promise<string> {
+	if (commitIndex != 0) {
+		if (!commitIndex || commitIndex > fileDiff.patches.length) {
+			commitIndex = fileDiff.activeCommit - 1;
 		}
-		if (patchId == 0) {
-			return fileDiff.commits[fileDiff.activeCommit - 1].content;
-		}
-		let patched = fileDiff.commits[fileDiff.activeCommit - 1].content;
-		for (let i = 0; i < patchId; i++) {
-			const patchString = fileDiff.patches[i].content;
-			const uniDiff = Diff.parsePatch(patchString);
-			patched = Diff.applyPatch(patched, uniDiff[0]);
-		}
-		return patched;
-	} else {
-		return undefined;
 	}
+	if (commitIndex < 0) {
+		commitIndex = 0;
+	}
+	return fileDiff.commits[commitIndex].content;
+}
+
+export async function getPatched(fileDiff: diff, patchIndex: number): Promise<string | undefined> {
+	if (patchIndex != 0) {
+		if (!patchIndex || patchIndex > fileDiff.patches.length) {
+			patchIndex = fileDiff.patches.length;
+		}
+	}
+	if (patchIndex < 0) {
+		return fileDiff.commits[fileDiff.activeCommit - 1].content;
+	}
+	let patched = fileDiff.commits[fileDiff.activeCommit - 1].content;
+	for (let i = 0; i <= patchIndex; i++) {
+		const patchString = fileDiff.patches[i].content;
+		const uniDiff = Diff.parsePatch(patchString);
+		patched = Diff.applyPatch(patched, uniDiff[0]);
+	}
+	return patched;
 }
 
 async function restoreCommit(): Promise<void> {
@@ -226,7 +236,7 @@ function createDiffFile(filePath: vscode.Uri, initCommit?: commit) {
 	if (initCommit) {
 		newCommit(fileDiff, initCommit);
 	}
-	createFile(diffPathOf(filePath), JSON.stringify(fileDiff, null, 4));
+	writeFile(diffPathOf(filePath), JSON.stringify(fileDiff, null, 4));
 }
 
 async function init(): Promise<void> {
@@ -236,22 +246,23 @@ async function init(): Promise<void> {
 		if (!(await fileExists(lh_dir))) {
 			await vscode.workspace.fs.createDirectory(lh_dir);
 		}
+		if (!(await fileExists(temp_dir))) {
+			await vscode.workspace.fs.createDirectory(temp_dir);
+		}
 		await vscode.workspace.fs.writeFile(lh_ignore_file, utils.encode(`.lh/*${EOL}`));
 	}
 }
 
-export async function createFile(filePath: vscode.Uri, data?: string | undefined) {
-	if (await fileExists(filePath)) {
-		return;
+export async function writeFile(filePath: vscode.Uri, data: string) {
+	if (!(await fileExists(filePath))) {
+		await vscode.workspace.fs.createDirectory(parentFolder(filePath));
 	}
-	await vscode.workspace.fs.createDirectory(parentFolder(filePath));
 	await vscode.workspace.fs.writeFile(filePath, utils.encode(data));
 }
 
 export async function fileExists(filePath: vscode.Uri): Promise<boolean> {
 	try {
 		const f = await vscode.workspace.fs.stat(filePath);
-		f;
 	} catch {
 		return false;
 	}
