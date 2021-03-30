@@ -17,7 +17,7 @@ class DiffBrowserItem extends vscode.TreeItem {
             this.isFolder = true;
         }
     }
-
+    // CR Elazar: seems to not being used anywhere in the code
     public readonly isFolder;
 }
 
@@ -32,6 +32,7 @@ class DiffItem extends DiffBrowserItem {
     ) {
         super(label, collapsibleState, command);
         if (this.type == lh.DiffType.Commit) {
+            // CR Elazar: as we talked about, use a function that given a date return the representation (e.g. 5 minutes ago)
             this.description = this.diff.commits[index].date;
         } else if (this.type == lh.DiffType.Patch) {
             this.description = this.diff.patches[index].date;
@@ -112,10 +113,15 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
         const f = await vscode.workspace.fs.readDirectory(folderPath);
         const folders: PathItem[] = [];
         const files: PathItem[] = [];
+        // CR Elazar: maybe change to f.forEach(([relativePath, fileType]) ... instead? better than using value[0] value[1]
         f.forEach((value) => {
+            // CR Elazar: does emitting the `.path` works also? like: vscode.Uri.joinPath(folderPath, value[0]) === lh.LH_DIR
             if (vscode.Uri.joinPath(folderPath, value[0]).path === lh.LH_DIR.path) {
                 return;
             }
+            // CR Elazar: since we don't use `collapsibleState` outside of the "switch", I don't think declaring it with "let" 
+            //      is clearer. you can simply pass the required value. if you do want to declare, there's a trick to overcome the 
+            //      switch case issue, using brackets: `case ...: { ...<code here>; break; }`.
             let collapsibleState;
             const itemPath = vscode.Uri.joinPath(folderPath, value[0]);
             switch (value[1]) {
@@ -161,6 +167,7 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
 
     private currentCommits: DiffBrowserItem[] = [];
     private currentPatches: DiffBrowserItem[] = [];
+    // CR Elazar: this line is wayyy to long
     private readonly rootDirectories: DiffBrowserItem[] = [new DiffBrowserItem('Commits', vscode.TreeItemCollapsibleState.Collapsed), new DiffBrowserItem('Patches', vscode.TreeItemCollapsibleState.Collapsed)];
 
     refresh(): void {
@@ -173,6 +180,9 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
 
     getChildren(element?: DiffBrowserItem): vscode.ProviderResult<DiffBrowserItem[]> {
         if (element) {
+            // CR Elazar: either declare a constants for "Commits" and "Patches", or use an enum, or separate this
+            //      class into 2 providers (e.g. `DiffNodeProvider` that uses `CommitNodeProvider` `PatchNodeProvider`
+            //      or something similar)
             if (element.label == "Commits") {
                 return Promise.resolve(this.currentCommits);
             } else if (element.label == "Patches") {
@@ -190,6 +200,8 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
         if (fileDiff) {
             fileDiff.commits.forEach((value, index) => {
                 const onOpenCommit = new OpenCommitCmd("Local History: Open Commit", "local-history.diff-browser.open-commit", [fileDiff, index])
+                // CR Elazar: we talked about "sorting". you should implement this part using push (faster), and then reverse 
+                //      if the "sorting state" indicate it. anyway, `unshift` is much slower then `push`.
                 this.currentCommits.unshift(new DiffItem(fileDiff.commits[index].name, vscode.TreeItemCollapsibleState.None, fileDiff, index, lh.DiffType.Commit, onOpenCommit));
             });
             fileDiff.patches.forEach((value, index) => {
@@ -200,6 +212,7 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
         this.refresh();
     }
 
+    // CR Elazar: this function seems to be redundant, isn't it?
     clearDiff() {
         this.currentPatches = [];
         this.refresh();

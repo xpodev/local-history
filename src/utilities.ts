@@ -1,5 +1,6 @@
 import { TextEncoder } from "util";
 
+// CR Elazar: move all date related into it's own module, e.g. "date utils" or something
 const monthNames = [
     "January", "February", "March", "April", "May", "June", "July",
     "August", "September", "October", "November", "December"
