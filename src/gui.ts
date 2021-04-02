@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
+import { DateLH } from './date-utils';
 import * as lh from './extension';
-import * as path from 'path';
 
+const COMMITS_LABEL = "Commits";
+const PATCHES_LABEL = "Patches";
 
 class DiffBrowserItem extends vscode.TreeItem {
 
@@ -11,14 +13,9 @@ class DiffBrowserItem extends vscode.TreeItem {
         public readonly command?: vscode.Command
     ) {
         super(label, collapsibleState);
-        if (this.collapsibleState == vscode.TreeItemCollapsibleState.None) {
-            this.isFolder = false;
-        } else {
-            this.isFolder = true;
-        }
     }
     // CR Elazar: seems to not being used anywhere in the code
-    public readonly isFolder;
+    // CR Neriya: Removed.
 }
 
 class DiffItem extends DiffBrowserItem {
@@ -33,9 +30,12 @@ class DiffItem extends DiffBrowserItem {
         super(label, collapsibleState, command);
         if (this.type == lh.DiffType.Commit) {
             // CR Elazar: as we talked about, use a function that given a date return the representation (e.g. 5 minutes ago)
-            this.description = this.diff.commits[index].date;
+            // CR Neriya: I updated all the dates utilities to be one class that extends Date.
+            const date = new DateLH(this.diff.commits[index].date);
+            this.description = date.represent();
         } else if (this.type == lh.DiffType.Patch) {
-            this.description = this.diff.patches[index].date;
+            const date = new DateLH(this.diff.patches[index].date);
+            this.description = date.represent();
         }
     }
 
@@ -110,28 +110,27 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
     }
 
     async scanFolder(folderPath: vscode.Uri): Promise<PathItem[]> {
-        const f = await vscode.workspace.fs.readDirectory(folderPath);
+        const folderContent = await vscode.workspace.fs.readDirectory(folderPath);
         const folders: PathItem[] = [];
         const files: PathItem[] = [];
         // CR Elazar: maybe change to f.forEach(([relativePath, fileType]) ... instead? better than using value[0] value[1]
-        f.forEach((value) => {
+        // CR Neriya: Changed
+        folderContent.forEach(([fileName, fileType]) => {
             // CR Elazar: does emitting the `.path` works also? like: vscode.Uri.joinPath(folderPath, value[0]) === lh.LH_DIR
-            if (vscode.Uri.joinPath(folderPath, value[0]).path === lh.LH_DIR.path) {
+            if (vscode.Uri.joinPath(folderPath, fileName).path === lh.LH_DIR.path) {
                 return;
             }
             // CR Elazar: since we don't use `collapsibleState` outside of the "switch", I don't think declaring it with "let" 
             //      is clearer. you can simply pass the required value. if you do want to declare, there's a trick to overcome the 
             //      switch case issue, using brackets: `case ...: { ...<code here>; break; }`.
-            let collapsibleState;
-            const itemPath = vscode.Uri.joinPath(folderPath, value[0]);
-            switch (value[1]) {
+            // CR Neriya: Updated switch, removed the variable.
+            const itemPath = vscode.Uri.joinPath(folderPath, fileName);
+            switch (fileType) {
                 case vscode.FileType.File:
-                    collapsibleState = vscode.TreeItemCollapsibleState.None;
-                    files.push(new PathItem(value[0], collapsibleState, itemPath, new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [itemPath])));
+                    files.push(new PathItem(fileName, vscode.TreeItemCollapsibleState.None, itemPath, new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [itemPath])));
                     break;
                 case vscode.FileType.Directory:
-                    collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-                    folders.push(new PathItem(value[0], collapsibleState, itemPath, new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [itemPath])));
+                    folders.push(new PathItem(fileName, vscode.TreeItemCollapsibleState.Collapsed, itemPath, new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [itemPath])));
                     break;
                 default:
                     return;
@@ -168,7 +167,11 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
     private currentCommits: DiffBrowserItem[] = [];
     private currentPatches: DiffBrowserItem[] = [];
     // CR Elazar: this line is wayyy to long
-    private readonly rootDirectories: DiffBrowserItem[] = [new DiffBrowserItem('Commits', vscode.TreeItemCollapsibleState.Collapsed), new DiffBrowserItem('Patches', vscode.TreeItemCollapsibleState.Collapsed)];
+    // CR Neriya: happy now?
+    private readonly rootDirectories: DiffBrowserItem[] = [
+        new DiffBrowserItem(COMMITS_LABEL, vscode.TreeItemCollapsibleState.Collapsed),
+        new DiffBrowserItem(PATCHES_LABEL, vscode.TreeItemCollapsibleState.Collapsed)
+    ];
 
     refresh(): void {
         this._onDidChangeTreeData.fire(undefined);
@@ -183,9 +186,10 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
             // CR Elazar: either declare a constants for "Commits" and "Patches", or use an enum, or separate this
             //      class into 2 providers (e.g. `DiffNodeProvider` that uses `CommitNodeProvider` `PatchNodeProvider`
             //      or something similar)
-            if (element.label == "Commits") {
+            // CR Neriya: Declared constants.
+            if (element.label === COMMITS_LABEL) {
                 return Promise.resolve(this.currentCommits);
-            } else if (element.label == "Patches") {
+            } else if (element.label === PATCHES_LABEL) {
                 return Promise.resolve(this.currentPatches);
             }
         } else {
@@ -202,22 +206,23 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
                 const onOpenCommit = new OpenCommitCmd("Local History: Open Commit", "local-history.diff-browser.open-commit", [fileDiff, index])
                 // CR Elazar: we talked about "sorting". you should implement this part using push (faster), and then reverse 
                 //      if the "sorting state" indicate it. anyway, `unshift` is much slower then `push`.
-                this.currentCommits.unshift(new DiffItem(fileDiff.commits[index].name, vscode.TreeItemCollapsibleState.None, fileDiff, index, lh.DiffType.Commit, onOpenCommit));
+                // CR Neriya: Changed.
+                this.currentCommits.push(new DiffItem(fileDiff.commits[index].name, vscode.TreeItemCollapsibleState.None, fileDiff, index, lh.DiffType.Commit, onOpenCommit));
             });
             fileDiff.patches.forEach((value, index) => {
                 const onOpenPatch = new OpenPatchCmd("Local History: Open Patch", "local-history.diff-browser.open-patch", [fileDiff, index])
-                this.currentPatches.unshift(new DiffItem(`patch-${index + 1}`, vscode.TreeItemCollapsibleState.None, fileDiff, index, lh.DiffType.Patch, onOpenPatch));
+                this.currentPatches.push(new DiffItem(`patch-${index + 1}`, vscode.TreeItemCollapsibleState.None, fileDiff, index, lh.DiffType.Patch, onOpenPatch));
             });
+        }
+        if(lh.config.browserNewToOld) {
+            this.currentCommits = this.currentCommits.reverse();
+            this.currentPatches = this.currentPatches.reverse();
         }
         this.refresh();
     }
 
     // CR Elazar: this function seems to be redundant, isn't it?
-    clearDiff() {
-        this.currentPatches = [];
-        this.refresh();
-    }
-
+    // CR Neriya: Very true sir.
 }
 
 const browserNodeProvider = new BrowserNodeProvider();

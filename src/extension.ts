@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 import * as Diff from 'diff';
 import * as utils from './utilities';
+import * as dateUtils from './date-utils';
 import { initGUI } from './gui';
 import { EOL } from 'os';
 
@@ -11,6 +12,7 @@ export const LH_DIR = vscode.Uri.joinPath(ROOT_DIR, '.lh');
 export const TEMP_DIR = vscode.Uri.joinPath(LH_DIR, '__temp__');
 const LH_IGNORE_FILE = vscode.Uri.joinPath(LH_DIR, '.lhignore');
 const NULL_PATCH = Diff.createPatch('', '', '');
+
 let lh_ignore: string[] = [];
 
 export enum DiffType {
@@ -18,8 +20,10 @@ export enum DiffType {
 	Patch
 }
 
-const config = {
-	dateFormat: "dd-MM-yy"
+export const config = {
+	dateFormat: "dd-MM-yy",
+	lastDateAgo: 1000 * 60 * 5, // Hardcoded 5 minutes, for test purposes
+	browserNewToOld: true	// This config name is not good, need to find antoher one.
 }
 
 const onSave = vscode.workspace.onWillSaveTextDocument(async (document) => {
@@ -227,9 +231,9 @@ export async function createCommit(filePath?: vscode.Uri) {
 	let commitName = await vscode.window.showInputBox({
 		prompt: "Enter commit name (default ID-DATE)"
 	});
-	const commitDate = new Date();
+	const commitDate = new dateUtils.DateLH();
 	if (!commitName) {
-		commitName = `Commit${fileDiff ? fileDiff.commits.length : 1}-${utils.formatDate(commitDate, config.dateFormat)}`;
+		commitName = `Commit${fileDiff ? fileDiff.commits.length : 1}-${commitDate.format()}`;
 	}
 	const createdCommit: commit = {
 		name: commitName,
