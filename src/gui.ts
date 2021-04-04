@@ -253,6 +253,11 @@ async function restorePatch(selectedItem: DiffItem) {
     lh.restorePatchA(lh.sourceFileOf(selectedItem.diff), selectedItem.index);
 }
 
+async function deleteCommit(selectedItem: DiffItem) {
+    lh.deleteCommit(selectedItem.diff, selectedItem.index);
+    diffNodeProvider.refresh();
+}
+
 export function initGUI() {
     vscode.window.registerTreeDataProvider('localHistoryFileBrowser', browserNodeProvider);
     vscode.window.registerTreeDataProvider('localHistoryDiffBrowser', diffNodeProvider);
@@ -275,7 +280,10 @@ export function initGUI() {
         } else if (selectedItem.type == lh.DiffType.Patch) {
             await restorePatch(selectedItem);
         }
-    })
+    });
+    vscode.commands.registerCommand('local-history.diff-browser.delete-commit', async (selectedItem: DiffItem) => {
+        await deleteCommit(selectedItem);
+    });
 
     vscode.workspace.onDidCreateFiles((e) => {
         browserNodeProvider.refresh();

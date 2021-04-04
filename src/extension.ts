@@ -248,6 +248,17 @@ export async function createCommit(filePath?: vscode.Uri) {
 	}
 }
 
+export async function deleteCommit(fileDiff: diff, commitIndex: number): Promise<void> {
+	if (commitIndex == fileDiff.activeCommit) {
+
+	}
+	fileDiff.commits = fileDiff.commits.slice(commitIndex, 0);
+	if (fileDiff.activeCommit > commitIndex) {
+		fileDiff.activeCommit--;
+	}
+	await saveFileDiff(fileDiff);
+}
+
 function createDiffFile(filePath: vscode.Uri, initCommit?: commit) {
 	const fileDiff = newDiff(filePath);
 	if (initCommit) {

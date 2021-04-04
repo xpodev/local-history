@@ -47,6 +47,10 @@
 			{
 				"command": "local-history.diff-browser.open-patch",
 				"title": "Local History: Open Patch"
+			},
+			{
+				"command": "local-history.diff-browser.delete-commit",
+				"title": "Delete"
 			}
 		],
 		"viewsContainers": {
@@ -91,7 +95,15 @@
 			"view/item/context": [
 				{
 					"command": "local-history.diff-browser.restore",
-					"when": "view == localHistoryDiffBrowser && viewItem == browserDiffItem"
+					"when": "view == localHistoryDiffBrowser && viewItem == commitDiffItem"
+				},
+				{
+					"command": "local-history.diff-browser.restore",
+					"when": "view == localHistoryDiffBrowser && viewItem == patchDiffItem"
+				},
+				{
+					"command": "local-history.diff-browser.delete-commit",
+					"when": "view == localHistoryDiffBrowser && viewItem == commitDiffItem"
 				}
 			]
 		}
