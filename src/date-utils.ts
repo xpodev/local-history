@@ -1,3 +1,4 @@
+import { time, timeStamp } from "node:console";
 import { config } from "./extension";
 
 const monthNames = [
@@ -14,24 +15,27 @@ function twoDigitPad(num: number) {
     return num < 10 ? "0" + num : num;
 }
 
-export class DateLH extends Date{
-    public static readonly SECOND = 1000;
-    public static readonly MINUTE = 60 * DateLH.SECOND;
-    public static readonly HOUR = 60 * DateLH.MINUTE;
-    public static readonly DAY = 24 * DateLH.HOUR;
-    public static readonly MONTH = 30 * DateLH.DAY;
-    public static readonly YEAR = 12 * DateLH.MONTH;
+export class DateExt extends Date {
+    public static readonly timestep: timestep = {
+        millisecond: 1,
+        second: 1000,
+        minute: 60000,
+        hour: 3600000,
+        day: 8.64e7,
+        month: 2.592e9,
+        year: 3.1104e10
+    };
 
     constructor(value: string);
     constructor(value: number);
     constructor(value: Date);
     constructor();
-    constructor(value?: string | number| Date) {
-        if(!value) {
+    constructor(value?: string | number | Date) {
+        if (!value) {
             value = Date.now();
         }
         super(value);
-    }  
+    }
 
     format(formatStr?: string) {
         if (!formatStr) {
@@ -70,43 +74,27 @@ export class DateLH extends Date{
             ;
     }
 
-    represent() {
+    represent(): string {
         const now = Date.now();
         // '+' sign casting the date to a number.
         const timeDiff = now - +this;
         if (timeDiff >= config.lastDateAgo) {
-            return this.format( `${config.dateFormat} hh:mm`);
+            return this.format(`${config.dateFormat} hh:mm`);
         }
-        if (timeDiff >= DateLH.SECOND) {
-            if (timeDiff >= DateLH.MINUTE) {
-                if (timeDiff >= DateLH.HOUR) {
-                    if (timeDiff >= DateLH.DAY) {
-                        if (timeDiff >= DateLH.MONTH) {
-                            if (timeDiff >= DateLH.YEAR) {
-                                const timeAgo = Math.floor(timeDiff / DateLH.YEAR);
-                                return `${timeAgo} year${timeAgo > 1 ? "s" : ""} ago`;
-                            } else {
-                                const timeAgo = Math.floor(timeDiff / DateLH.MONTH);
-                                return `${timeAgo} month${timeAgo > 1 ? "s" : ""} ago`;
-                            }
-                        } else {
-                            const timeAgo = Math.floor(timeDiff / DateLH.DAY);
-                            return `${timeAgo} day${timeAgo > 1 ? "s" : ""} ago`;
-                        }
-                    } else {
-                        const timeAgo = Math.floor(timeDiff / DateLH.HOUR);
-                        return `${timeAgo} hour${timeAgo > 1 ? "s" : ""} ago`;
-                    }
-                } else {
-                    const timeAgo = Math.floor(timeDiff / DateLH.MINUTE);
-                    return `${timeAgo} minute${timeAgo > 1 ? "s" : ""} ago`;
-                }
+        let timeAgo = 0;
+        let timeStr = "Now";
+        for (const step in DateExt.timestep) {
+            if (timeDiff >= DateExt.timestep[step]) {
+                timeAgo = Math.floor(timeDiff / DateExt.timestep[step]);
+                timeStr = `${timeAgo} ${step}${timeAgo > 1 ? 's' : ''} ago`;
             } else {
-                const timeAgo = Math.floor(timeDiff / DateLH.SECOND);
-                return `${timeAgo} second${timeAgo > 1 ? "s" : ""} ago`;
+                break;
             }
-        } else {
-            return "Now";
         }
+        return timeStr;
     }
+}
+
+type timestep = {
+    [key: string]: number
 }
