@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DateLH } from './date-utils';
+import { DateExt } from './date-utils';
 import * as lh from './extension';
 
 const COMMITS_LABEL = "Commits";
@@ -31,15 +31,15 @@ class DiffItem extends DiffBrowserItem {
         if (this.type == lh.DiffType.Commit) {
             // CR Elazar: as we talked about, use a function that given a date return the representation (e.g. 5 minutes ago)
             // CR Neriya: I updated all the dates utilities to be one class that extends Date.
-            const date = new DateLH(this.diff.commits[index].date);
+            const date = new DateExt(this.diff.commits[index].date);
             this.description = date.represent();
+            this.contextValue = "commitDiffItem";
         } else if (this.type == lh.DiffType.Patch) {
-            const date = new DateLH(this.diff.patches[index].date);
+            const date = new DateExt(this.diff.patches[index].date);
             this.description = date.represent();
+            this.contextValue = "patchDiffItem";
         }
     }
-
-    contextValue = 'browserDiffItem';
 }
 
 class OpenCommitCmd implements vscode.Command {
@@ -214,7 +214,7 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
                 this.currentPatches.push(new DiffItem(`patch-${index + 1}`, vscode.TreeItemCollapsibleState.None, fileDiff, index, lh.DiffType.Patch, onOpenPatch));
             });
         }
-        if(lh.config.browserNewToOld) {
+        if (lh.config.browserNewToOld) {
             this.currentCommits = this.currentCommits.reverse();
             this.currentPatches = this.currentPatches.reverse();
         }
