@@ -205,8 +205,7 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
 }
 
 // CR Elazar: is it common to declare the providers as globals? 
-const browserNodeProvider = new BrowserNodeProvider();
-const diffNodeProvider = new DiffNodeProvider();
+// CR Neriya: No, it should be in the init function. Moved.
 
 async function openCommit(fileDiff: lh.diff, commitIndex: number) {
     const sourceFile = lh.sourceFileOf(fileDiff);
@@ -235,10 +234,11 @@ async function restorePatch(selectedItem: DiffItem) {
 
 async function deleteCommit(selectedItem: DiffItem) {
     lh.deleteCommit(selectedItem.diff, selectedItem.index);
-    diffNodeProvider.refresh();
 }
 
 export function initGUI() {
+    const browserNodeProvider = new BrowserNodeProvider();
+    const diffNodeProvider = new DiffNodeProvider();
     vscode.window.registerTreeDataProvider('localHistoryFileBrowser', browserNodeProvider);
     vscode.window.registerTreeDataProvider('localHistoryDiffBrowser', diffNodeProvider);
 

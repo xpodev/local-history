@@ -8,13 +8,19 @@ import { initGUI } from './gui';
 import { EOL } from 'os';
 
 // CR Elazar: line's too long
-export const ROOT_DIR = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
+// CR Neriya: is it good now?
+export const ROOT_DIR = (
+	vscode.workspace.workspaceFolders?.length ?
+		vscode.workspace.workspaceFolders[0].uri :
+		parentFolder(vscode.workspace.textDocuments[0].uri)
+);
 export const LH_DIR = vscode.Uri.joinPath(ROOT_DIR, '.lh');
 export const TEMP_DIR = vscode.Uri.joinPath(LH_DIR, '__temp__');
 const LH_IGNORE_FILE = vscode.Uri.joinPath(LH_DIR, '.lhignore');
 const NULL_PATCH = Diff.createPatch('', '', '');
 
 // CR Elazar: I think it should be implement with some "IgnoreProvider" of some sort. see https://www.npmjs.com/package/ignore
+// CR Neriya: For now it's good. I don't really want to add more modules into this extension.
 let lh_ignore: string[] = [];
 
 export enum DiffType {
@@ -26,39 +32,45 @@ export const config = {
 	dateFormat: "dd-MM-yy",
 	lastDateAgo: 1000 * 60 * 5, // Hardcoded 5 minutes, for test purposes
 	// CR Elazar: it should not be in the config, but on the browser, as a toggle-able button.
+	// CR Neriya: I forgot about it, 
 	browserNewToOld: true	// This config name is not good, need to find antoher one.
 }
 
-const onSave = vscode.workspace.onWillSaveTextDocument(async (document) => {
-	const diskData = (await vscode.workspace.fs.readFile(document.document.uri)).toString();
-	await createDiff(document, diskData);
+const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
+	const diskData = (await vscode.workspace.fs.readFile(saveEvent.document.uri)).toString();
+	await createDiff(saveEvent.document, diskData);
 });
 
-// CR Elazar: rename document to saveEvent. or better, don't pass the event, but the `event.document`. 
-async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: string): Promise<void> {
-	const filePath = document.document.uri;
+// CR Elazar: rename document to saveEvent. or better, don't pass the event, but the `event.document`.
+// CR Neriya: You're right. 
+async function createDiff(document: vscode.TextDocument, diskData: string): Promise<void> {
+	const filePath = document.uri;
 	if (filePath.path === LH_IGNORE_FILE.path) {
 		await loadIgnoreFile();
 	}
 	if (isIgnored(filePath)) {
 		return;
 	}
-	const newData = document.document.getText();
+	const newData = document.getText();
 	let fileDiff = await loadFileDiff(filePath);
 	if (fileDiff) {
+		const lastPatch = await getPatched(fileDiff, fileDiff.activePatch);
 		if (diskData === '') {
-			diskData = await getPatched(fileDiff, fileDiff.activePatch);
+			diskData = lastPatch;
 		}
 		if (fileDiff.commits.length < 1) {
 			newCommit(fileDiff, newData);
 		} else {
-			const lastCommit = fileDiff.commits[fileDiff.activeCommit].content;
 			// CR Elazar: the code is not clear enough. better version, I think (didn't tested):
 			//		oldData = newData !== diskData ? diskData : lastCommit
 			//		if(newData !==  oldData) { ... }
-			//	 it's not the exact same logic. will it work? 
-			if (newData !== diskData || newData !== lastCommit) {
-				const patch = Diff.createPatch('', newData !== diskData ? diskData : lastCommit, newData);
+			//	 it's not the exact same logic. will it work?
+			// CR Neriya: This whole logic is wrong, I rewrote it. It should compare
+			//	 the new data with the last patched data, not with the last commit.
+			// 	 Also, now it's like you suggested.
+			const oldData = newData !== diskData ? diskData : lastPatch;
+			if (newData !== oldData) {
+				const patch = Diff.createPatch('', oldData, newData);
 				newPatch(fileDiff, patch);
 			}
 		}
