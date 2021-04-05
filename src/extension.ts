@@ -7,8 +7,8 @@ import * as dateUtils from './date-utils';
 import { initGUI } from './gui';
 import { EOL } from 'os';
 
-// CR Elazar: line's too long
-// CR Neriya: is it good now?
+// CR Elazar: now that I got to the end of the file, I think we should address it properly:
+// 		in vscode you can have multiple folders opened in the same workspace.
 export const ROOT_DIR = (
 	vscode.workspace.workspaceFolders?.length ?
 		vscode.workspace.workspaceFolders[0].uri :
@@ -41,10 +41,10 @@ const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
 	await createDiff(saveEvent.document, diskData);
 });
 
-// CR Elazar: rename document to saveEvent. or better, don't pass the event, but the `event.document`.
-// CR Neriya: You're right. 
+
 async function createDiff(document: vscode.TextDocument, diskData: string): Promise<void> {
 	const filePath = document.uri;
+	// CR Elazar: move this code to onSave, I think. it's not related to `createDiff` in any way
 	if (filePath.path === LH_IGNORE_FILE.path) {
 		await loadIgnoreFile();
 	}
@@ -55,19 +55,14 @@ async function createDiff(document: vscode.TextDocument, diskData: string): Prom
 	let fileDiff = await loadFileDiff(filePath);
 	if (fileDiff) {
 		const lastPatch = await getPatched(fileDiff, fileDiff.activePatch);
+		// CR Elazar: not sure why is that true. if the diskData is empty, it means the file content is empty, isn't it?
+		//		we still want to compare it with the last patch. I tested it as is and it doesn't work as expected
 		if (diskData === '') {
 			diskData = lastPatch;
 		}
 		if (fileDiff.commits.length < 1) {
 			newCommit(fileDiff, newData);
 		} else {
-			// CR Elazar: the code is not clear enough. better version, I think (didn't tested):
-			//		oldData = newData !== diskData ? diskData : lastCommit
-			//		if(newData !==  oldData) { ... }
-			//	 it's not the exact same logic. will it work?
-			// CR Neriya: This whole logic is wrong, I rewrote it. It should compare
-			//	 the new data with the last patched data, not with the last commit.
-			// 	 Also, now it's like you suggested.
 			const oldData = newData !== diskData ? diskData : lastPatch;
 			if (newData !== oldData) {
 				const patch = Diff.createPatch('', oldData, newData);
@@ -83,6 +78,7 @@ async function createDiff(document: vscode.TextDocument, diskData: string): Prom
 }
 
 function newPatch(fileDiff: diff, data: string): void {
+	// CR Elazar: explain the logic here, why do you slice? (I know the answer, but you should clarify for your future self)
 	if (fileDiff.activePatch <= fileDiff.patches.length) {
 		fileDiff.patches = fileDiff.patches.slice(0, fileDiff.activePatch + 1);
 	}
@@ -132,6 +128,8 @@ function diffPathOf(filePath: vscode.Uri): vscode.Uri {
 }
 
 export function tempFileOf(filePath: vscode.Uri): vscode.Uri {
+	// CR Elazar: I think you should implement with https://code.visualstudio.com/api/extension-guides/virtual-documents
+	// 		if you want, I can do it.
 	return vscode.Uri.joinPath(TEMP_DIR, `tmp-${vscode.workspace.asRelativePath(filePath)}`);
 }
 
@@ -158,10 +156,14 @@ async function saveFileDiff(fileDiff: diff): Promise<void> {
 }
 
 async function loadIgnoreFile(): Promise<void> {
+	// CR Elazar: you should not assume LH_IGNORE_FILE exists. if not, just set the to the default: ['.lh/.*']
 	lh_ignore = (await vscode.workspace.fs.readFile(LH_IGNORE_FILE)).toString().split(EOL).filter(Boolean);
 }
 
 function isIgnored(filePath: vscode.Uri): boolean {
+	// CR Elazar: either rename `a` or simply `return filter(...) > 0;`
+	// CR Elazar: RegExp().test tests for partial matches also, that's no good. I think it should be implemented differently.
+	// 		either use 3rdparty or at least make it work with "^EXPRESSION$" to match all
 	const a = lh_ignore.filter(function (pattern) {
 		return new RegExp(pattern).test(vscode.workspace.asRelativePath(filePath));
 	}).length > 0;
@@ -170,32 +172,42 @@ function isIgnored(filePath: vscode.Uri): boolean {
 
 async function restorePatch(): Promise<void> {
 	// Display a message box to the user
+	// CR Elazar: is it true that `vscode.window.activeTextEditor` always !== undefined?  (hint: it's not. I tested it)
 	const filePath = vscode.window.activeTextEditor!.document.uri;
 	let patchIndex: any = await vscode.window.showInputBox({
 		prompt: "Enter patch index (start from 0)"
 	});
+	// CR Elazar: verify user input!
 	patchIndex = parseInt(patchIndex);
 	await restorePatchA(filePath, patchIndex);
 }
 
+// CR Elazar: rename function
 export async function restorePatchA(filePath: vscode.Uri, patchIndex: number): Promise<void> {
 	const fileDiff = await loadFileDiff(filePath);
 	if (fileDiff) {
 		const patched = await getPatched(fileDiff, patchIndex);
 		await vscode.workspace.fs.writeFile(filePath, utils.encode(patched));
 		fileDiff.activePatch = patchIndex;
+		// CR Elazar: why do you need the `!` here?
 		await saveFileDiff(fileDiff!);
 	} else {
+		// CR Elazar: give better error message. (we can discuss user experience stuff offline, just keep it as a "Todo")
 		vscode.window.showErrorMessage(`Diff info not found on file "${filePath}"`);
 	}
 }
 
 export async function getCommit(fileDiff: diff, commitIndex: number): Promise<string> {
+	// CR Elazar: basically, I don't understand this function, all those checks. why would you ever pass a wrong commitIndex?
+	//		if it's related to user input, then you should show an error message instead. and not from this function either.
 	if (commitIndex != 0) {
+		// CR Elazar: what does it mean `!commitIndex` in this context?
+		// CR Elazar: you probably meant `>= fileDiff.commits.length`
 		if (!commitIndex || commitIndex > fileDiff.patches.length) {
 			commitIndex = fileDiff.activeCommit;
 		}
 	}
+	// CR Elazar: how can it be less than zero?
 	if (commitIndex < 0) {
 		commitIndex = 0;
 	}
@@ -203,6 +215,7 @@ export async function getCommit(fileDiff: diff, commitIndex: number): Promise<st
 }
 
 export async function getPatched(fileDiff: diff, patchIndex: number): Promise<string> {
+	// CR Elazar: same comment as for getCommit checks.
 	if (patchIndex != 0) {
 		if (!patchIndex || patchIndex > fileDiff.patches.length) {
 			patchIndex = fileDiff.patches.length;
@@ -226,6 +239,7 @@ async function restoreCommit(): Promise<void> {
 	let commitId: any = await vscode.window.showInputBox({
 		prompt: "Enter commit index (starts from 0)"
 	});
+	// CR Elazar: verify user input!
 	commitId = parseInt(commitId);
 	await restoreCommitA(filePath, commitId);
 }
@@ -233,11 +247,13 @@ async function restoreCommit(): Promise<void> {
 export async function restoreCommitA(filePath: vscode.Uri, commitIndex: number): Promise<void> {
 	const fileDiff = await loadFileDiff(filePath);
 	if (fileDiff) {
+		// CR Elazar: typo. should be "committed". you should install the "code spell checker" extension
 		const commited = await getCommit(fileDiff, commitIndex);
 		await vscode.workspace.fs.writeFile(filePath, utils.encode(commited));
 		fileDiff.activeCommit = commitIndex;
 		await saveFileDiff(fileDiff);
 	} else {
+		// CR Elazar: give better error message. 
 		vscode.window.showErrorMessage(`Diff info not found on file "${filePath}"`);
 	}
 }
@@ -245,19 +261,30 @@ export async function restoreCommitA(filePath: vscode.Uri, commitIndex: number):
 export async function createCommit(filePath?: vscode.Uri) {
 	let newData;
 	if (!filePath) {
+		// CR Elazar: is vscode.window.activeTextEditor never `undefined`?
 		filePath = vscode.window.activeTextEditor!.document.uri;
 		newData = vscode.window.activeTextEditor!.document.getText();
 	} else {
 		newData = (await vscode.workspace.fs.readFile(filePath)).toString();
 	}
 	let fileDiff = await loadFileDiff(filePath);
+
+	// CR Elazar: an alternative: what do you think?
+	// 		const commitDate = new dateUtils.DateExt();
+	// 		const commitDefaultName = `Commit${fileDiff ? fileDiff.commits.length : 1}-${commitDate.format()}`;
+	// 		let commitName = await vscode.window.showInputBox({
+	// 			prompt: "Enter commit name",
+	// 			value: commitDefaultName,
+	// 		});
 	let commitName = await vscode.window.showInputBox({
 		prompt: "Enter commit name (default Commit-ID)"
 	});
 	const commitDate = new dateUtils.DateExt();
+	// CR Elazar: if the user clicked `Esc` then we should not create a commit. read `showInputBox` documentation
 	if (!commitName) {
 		commitName = `Commit${fileDiff ? fileDiff.commits.length : 1}-${commitDate.format()}`;
 	}
+	// CR Elazar: put `createdCommit` inside the `else {...}` clause
 	const createdCommit: commit = {
 		name: commitName,
 		date: commitDate.toLocaleString(),
@@ -273,8 +300,9 @@ export async function createCommit(filePath?: vscode.Uri) {
 
 export async function deleteCommit(fileDiff: diff, commitIndex: number): Promise<void> {
 	if (commitIndex == fileDiff.activeCommit) {
-
+		// CR Elazar: what about it?
 	}
+	// CR Elazar: shouldn't it be `splice`?
 	fileDiff.commits = fileDiff.commits.slice(commitIndex, 0);
 	if (fileDiff.activeCommit > commitIndex) {
 		fileDiff.activeCommit--;
@@ -291,6 +319,9 @@ function createDiffFile(filePath: vscode.Uri, initCommit?: commit) {
 }
 
 async function init(): Promise<void> {
+	// CR Elazar: you should verify vscode is opened inside a folder. e.g. by:
+	// 	if (vscode.workspace.workspaceFolders) {
+	// CR Elazar: I think you can safely remove this if. either way we  
 	if (await fileExists(LH_IGNORE_FILE)) {
 		return;
 	} else {
@@ -300,6 +331,7 @@ async function init(): Promise<void> {
 		if (!(await fileExists(TEMP_DIR))) {
 			await vscode.workspace.fs.createDirectory(TEMP_DIR);
 		}
+		// CR Elazar: I think you shouldn't add ".lh/*" to this file. I think it should be ignored by default.
 		await vscode.workspace.fs.writeFile(LH_IGNORE_FILE, utils.encode(`.lh/*${EOL}`));
 	}
 }
