@@ -14,8 +14,6 @@ class DiffBrowserItem extends vscode.TreeItem {
     ) {
         super(label, collapsibleState);
     }
-    // CR Elazar: seems to not being used anywhere in the code
-    // CR Neriya: Removed.
 }
 
 class DiffItem extends DiffBrowserItem {
@@ -29,8 +27,6 @@ class DiffItem extends DiffBrowserItem {
     ) {
         super(label, collapsibleState, command);
         if (this.type == lh.DiffType.Commit) {
-            // CR Elazar: as we talked about, use a function that given a date return the representation (e.g. 5 minutes ago)
-            // CR Neriya: I updated all the dates utilities to be one class that extends Date.
             const date = new DateExt(this.diff.commits[index].date);
             this.description = date.represent();
             this.contextValue = "commitDiffItem";
@@ -113,17 +109,10 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
         const folderContent = await vscode.workspace.fs.readDirectory(folderPath);
         const folders: PathItem[] = [];
         const files: PathItem[] = [];
-        // CR Elazar: maybe change to f.forEach(([relativePath, fileType]) ... instead? better than using value[0] value[1]
-        // CR Neriya: Changed
         folderContent.forEach(([fileName, fileType]) => {
-            // CR Elazar: does emitting the `.path` works also? like: vscode.Uri.joinPath(folderPath, value[0]) === lh.LH_DIR
             if (vscode.Uri.joinPath(folderPath, fileName).path === lh.LH_DIR.path) {
                 return;
             }
-            // CR Elazar: since we don't use `collapsibleState` outside of the "switch", I don't think declaring it with "let" 
-            //      is clearer. you can simply pass the required value. if you do want to declare, there's a trick to overcome the 
-            //      switch case issue, using brackets: `case ...: { ...<code here>; break; }`.
-            // CR Neriya: Updated switch, removed the variable.
             const itemPath = vscode.Uri.joinPath(folderPath, fileName);
             switch (fileType) {
                 case vscode.FileType.File:
@@ -166,8 +155,6 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
 
     private currentCommits: DiffBrowserItem[] = [];
     private currentPatches: DiffBrowserItem[] = [];
-    // CR Elazar: this line is wayyy to long
-    // CR Neriya: happy now?
     private readonly rootDirectories: DiffBrowserItem[] = [
         new DiffBrowserItem(COMMITS_LABEL, vscode.TreeItemCollapsibleState.Collapsed),
         new DiffBrowserItem(PATCHES_LABEL, vscode.TreeItemCollapsibleState.Collapsed)
@@ -183,10 +170,6 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
 
     getChildren(element?: DiffBrowserItem): vscode.ProviderResult<DiffBrowserItem[]> {
         if (element) {
-            // CR Elazar: either declare a constants for "Commits" and "Patches", or use an enum, or separate this
-            //      class into 2 providers (e.g. `DiffNodeProvider` that uses `CommitNodeProvider` `PatchNodeProvider`
-            //      or something similar)
-            // CR Neriya: Declared constants.
             if (element.label === COMMITS_LABEL) {
                 return Promise.resolve(this.currentCommits);
             } else if (element.label === PATCHES_LABEL) {
@@ -204,9 +187,6 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
         if (fileDiff) {
             fileDiff.commits.forEach((value, index) => {
                 const onOpenCommit = new OpenCommitCmd("Local History: Open Commit", "local-history.diff-browser.open-commit", [fileDiff, index])
-                // CR Elazar: we talked about "sorting". you should implement this part using push (faster), and then reverse 
-                //      if the "sorting state" indicate it. anyway, `unshift` is much slower then `push`.
-                // CR Neriya: Changed.
                 this.currentCommits.push(new DiffItem(fileDiff.commits[index].name, vscode.TreeItemCollapsibleState.None, fileDiff, index, lh.DiffType.Commit, onOpenCommit));
             });
             fileDiff.patches.forEach((value, index) => {
@@ -221,10 +201,10 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
         this.refresh();
     }
 
-    // CR Elazar: this function seems to be redundant, isn't it?
-    // CR Neriya: Very true sir.
+
 }
 
+// CR Elazar: is it common to declare the providers as globals? 
 const browserNodeProvider = new BrowserNodeProvider();
 const diffNodeProvider = new DiffNodeProvider();
 

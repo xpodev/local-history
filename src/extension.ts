@@ -7,12 +7,14 @@ import * as dateUtils from './date-utils';
 import { initGUI } from './gui';
 import { EOL } from 'os';
 
+// CR Elazar: line's too long
 export const ROOT_DIR = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
 export const LH_DIR = vscode.Uri.joinPath(ROOT_DIR, '.lh');
 export const TEMP_DIR = vscode.Uri.joinPath(LH_DIR, '__temp__');
 const LH_IGNORE_FILE = vscode.Uri.joinPath(LH_DIR, '.lhignore');
 const NULL_PATCH = Diff.createPatch('', '', '');
 
+// CR Elazar: I think it should be implement with some "IgnoreProvider" of some sort. see https://www.npmjs.com/package/ignore
 let lh_ignore: string[] = [];
 
 export enum DiffType {
@@ -23,6 +25,7 @@ export enum DiffType {
 export const config = {
 	dateFormat: "dd-MM-yy",
 	lastDateAgo: 1000 * 60 * 5, // Hardcoded 5 minutes, for test purposes
+	// CR Elazar: it should not be in the config, but on the browser, as a toggle-able button.
 	browserNewToOld: true	// This config name is not good, need to find antoher one.
 }
 
@@ -31,6 +34,7 @@ const onSave = vscode.workspace.onWillSaveTextDocument(async (document) => {
 	await createDiff(document, diskData);
 });
 
+// CR Elazar: rename document to saveEvent. or better, don't pass the event, but the `event.document`. 
 async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: string): Promise<void> {
 	const filePath = document.document.uri;
 	if (filePath.path === LH_IGNORE_FILE.path) {
@@ -49,6 +53,10 @@ async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: 
 			newCommit(fileDiff, newData);
 		} else {
 			const lastCommit = fileDiff.commits[fileDiff.activeCommit].content;
+			// CR Elazar: the code is not clear enough. better version, I think (didn't tested):
+			//		oldData = newData !== diskData ? diskData : lastCommit
+			//		if(newData !==  oldData) { ... }
+			//	 it's not the exact same logic. will it work? 
 			if (newData !== diskData || newData !== lastCommit) {
 				const patch = Diff.createPatch('', newData !== diskData ? diskData : lastCommit, newData);
 				newPatch(fileDiff, patch);
