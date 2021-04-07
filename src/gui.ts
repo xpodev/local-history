@@ -212,8 +212,7 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
     }
 }
 
-// CR Elazar: is it common to declare the providers as globals? 
-// CR Neriya: I don't know but I need them global so I can refresh them.
+
 const diffNodeProvider = new DiffNodeProvider();
 const browserNodeProvider = new BrowserNodeProvider();
 
