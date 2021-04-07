@@ -16,7 +16,7 @@ function twoDigitPad(num: number) {
 }
 
 export class DateExt extends Date {
-    public static readonly timestep: timestep = {
+    public static readonly timeStep: timestep = {
         millisecond: 1,
         second: 1000,
         minute: 60000,
@@ -47,7 +47,7 @@ export class DateExt extends Date {
             hour = this.getHours(),
             minute = this.getMinutes(),
             second = this.getSeconds(),
-            miliseconds = this.getMilliseconds(),
+            milliseconds = this.getMilliseconds(),
             hh = twoDigitPad(hour),
             mm = twoDigitPad(minute),
             ss = twoDigitPad(second),
@@ -65,7 +65,7 @@ export class DateExt extends Date {
             .replace('hh', hh.toString()).replace('h', hour.toString())
             .replace('mm', mm.toString()).replace('m', minute.toString())
             .replace('ss', ss.toString()).replace('s', second.toString())
-            .replace('S', miliseconds.toString())
+            .replace('S', milliseconds.toString())
             .replace('dd', dd.toString()).replace('d', day.toString())
             .replace('MMMM', MMMM).replace('MMM', MMM).replace('MM', MM.toString()).replace('M', M.toString())
             .replace('EEEE', EEEE).replace('EEE', EEE)
@@ -76,16 +76,15 @@ export class DateExt extends Date {
 
     represent(): string {
         const now = Date.now();
-        // '+' sign casting the date to a number.
         const timeDiff = now - +this;
         if (timeDiff >= config.lastDateAgo) {
             return this.format(`${config.dateFormat} hh:mm`);
         }
         let timeAgo = 0;
         let timeStr = "Now";
-        for (const step in DateExt.timestep) {
-            if (timeDiff >= DateExt.timestep[step]) {
-                timeAgo = Math.floor(timeDiff / DateExt.timestep[step]);
+        for (const step in DateExt.timeStep) {
+            if (timeDiff >= DateExt.timeStep[step]) {
+                timeAgo = Math.floor(timeDiff / DateExt.timeStep[step]);
                 timeStr = `${timeAgo} ${step}${timeAgo > 1 ? 's' : ''} ago`;
             } else {
                 break;

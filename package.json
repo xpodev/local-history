@@ -41,6 +41,10 @@
 				"title": "Restore"
 			},
 			{
+				"command": "local-history.diff-browser.rename-commit",
+				"title": "Rename Commit"
+			},
+			{
 				"command": "local-history.diff-browser.open-commit",
 				"title": "Local History: Open Commit"
 			},
@@ -51,6 +55,11 @@
 			{
 				"command": "local-history.diff-browser.delete-commit",
 				"title": "Delete"
+			},
+			{
+				"command": "local-history.diff-browser.change-order",
+				"title": "Diff Browser: Change Order",
+				"icon": "$(arrow-up)"
 			}
 		],
 		"viewsContainers": {
@@ -90,11 +99,20 @@
 					"command": "local-history.refresh-file-browser",
 					"when": "view == localHistoryFileBrowser",
 					"group": "navigation"
+				},
+				{
+					"command": "local-history.diff-browser.change-order",
+					"when": "view == localHistoryDiffBrowser",
+					"group": "navigation"
 				}
 			],
 			"view/item/context": [
 				{
 					"command": "local-history.diff-browser.restore",
+					"when": "view == localHistoryDiffBrowser && viewItem == commitDiffItem"
+				},
+				{
+					"command": "local-history.diff-browser.rename-commit",
 					"when": "view == localHistoryDiffBrowser && viewItem == commitDiffItem"
 				},
 				{
