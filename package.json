@@ -94,6 +94,44 @@
 			}
 		],
 		"menus": {
+			"commandPalette": [
+				{
+					"command": "local-history.restore-patch",
+					"when": "false"
+				},
+				{
+					"command": "local-history.restore-commit",
+					"when": "false"
+				},
+				{
+					"command": "local-history.create-commit",
+					"title": "Local History: Create Commit"
+				},
+				{
+					"command": "local-history.diff-browser.open-source",
+					"when": "false"
+				},
+				{
+					"command": "local-history.diff-browser.restore",
+					"when": "false"
+				},
+				{
+					"command": "local-history.diff-browser.rename-commit",
+					"when": "false"
+				},
+				{
+					"command": "local-history.diff-browser.open-commit",
+					"when": "false"
+				},
+				{
+					"command": "local-history.diff-browser.open-patch",
+					"when": "false"
+				},
+				{
+					"command": "local-history.diff-browser.delete-commit",
+					"when": "false"
+				}
+			],
 			"view/title": [
 				{
 					"command": "local-history.refresh-file-browser",
