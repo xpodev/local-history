@@ -30,7 +30,7 @@ class Commit {
     public name: string;
     public content: string;
     public activePatchIndex: number = 0;
-    public readonly patches: patch[] = [];
+    public patches: patch[] = [];
     public readonly date: string = new Date().toISOString();
 
     get activePatch(): patch {
@@ -38,6 +38,10 @@ class Commit {
     }
 
     newPatch(content: string) {
+        if (this.activePatchIndex < this.patches.length - 1) {
+            // Removing the unnecessary patches.
+            this.patches.splice(this.activePatchIndex + 1);
+        }
         this.patches.push({
             date: new Date().toISOString(),
             content: content

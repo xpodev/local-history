@@ -4,10 +4,6 @@ import { DateUtils, FileSystemUtils } from './utilities';
 import { isLHDir, LH_WORKSPACES } from './workspace-folder-provider';
 import tempFileProvider from './temp-provider';
 
-const COMMITS_LABEL = "Commits";
-const PATCHES_LABEL = "Patches";
-
-
 class DiffItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
