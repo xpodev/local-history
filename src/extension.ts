@@ -2,12 +2,12 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as Diff from 'diff';
-import { dateUtils, fsUtils, encode } from './utilities';
-// import { initGUI } from './gui';
+import { DateUtils, FileSystemUtils, encode } from './utilities';
+import { initGUI, diffNodeProvider } from './gui';
 import { EOL } from 'os';
 import { DiffExt } from './diff-ext';
 import tempFileProvider from './temp-provider';
-import { LHWorkspaceFolderProvider } from './workspace-folder-provider';
+import { LHWorkspaceFolderProvider, LH_WORKSPACES } from './workspace-folder-provider';
 
 // CR Elazar: now that I got to the end of the file, I think we should address it properly:
 // 		in vscode you can have multiple folders opened in the same workspace.
@@ -17,8 +17,6 @@ const TEMP_SCHEME = "temp";
 
 // CR Elazar: I think it should be implement with some "IgnoreProvider" of some sort. see https://www.npmjs.com/package/ignore
 // CR Neriya: For now it's good. I don't really want to add more modules into this extension.
-let lh_ignore: string[] = [];
-const LH_WORKSPACES: LHWorkspaceFolderProvider[] = [];
 
 export const config = {
 	dateFormat: "dd-MM-yy",
@@ -29,13 +27,16 @@ export const config = {
 const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
 	const filePath = saveEvent.document.uri;
 	const workspaceFolderId = vscode.workspace.getWorkspaceFolder(filePath)?.index;
-	if (workspaceFolderId) {
+	if (workspaceFolderId == undefined) {
+		return;
+	} else {
 		if (await LH_WORKSPACES[workspaceFolderId].isIgnored(filePath)) {
 			return;
 		} else {
-			let diskData;
-			saveEvent.waitUntil(diskData = vscode.workspace.fs.readFile(saveEvent.document.uri));
-			await createDiff(saveEvent.document, (await diskData).toString());
+			// let diskData: Promise<string>;
+			let diskData = await FileSystemUtils.readFile(saveEvent.document.uri)
+			// saveEvent.waitUntil();
+			await createDiff(saveEvent.document, diskData);
 		}
 	}
 });
@@ -88,7 +89,7 @@ export async function createCommit(filePath?: vscode.Uri) {
 		newData = (await vscode.workspace.fs.readFile(filePath)).toString();
 	}
 	const fileDiff = await DiffExt.load(filePath);
-	const commitDate = new dateUtils.DateExt();
+	const commitDate = new DateUtils.DateExt();
 	const commitDefaultName = `Commit${fileDiff ? fileDiff.commits.length : 1}-${commitDate.format()}`;
 	let commitName = await vscode.window.showInputBox({
 		prompt: "Enter commit name",
@@ -104,6 +105,7 @@ export async function createCommit(filePath?: vscode.Uri) {
 
 	fileDiff.newCommit(newData, commitName);
 	await fileDiff.save();
+	await diffNodeProvider.refresh();
 }
 
 async function init(): Promise<void> {
@@ -117,16 +119,18 @@ async function init(): Promise<void> {
 	// CR Elazar: forgot to finish the sentence... won't it work to simply createDirectory?
 	//		the documentation hints it would not be a problem if it's already exists.
 	//		if so, you can trim this function into 3 lines.  
-	vscode.workspace.workspaceFolders?.forEach(async (folder) => {
-		const workspaceFolder = new LHWorkspaceFolderProvider(folder);
-		await workspaceFolder.init();
-		LH_WORKSPACES.push(workspaceFolder);
-	});
+	if (vscode.workspace.workspaceFolders) {
+		for (const folder of vscode.workspace.workspaceFolders) {
+			const workspaceFolder = new LHWorkspaceFolderProvider(folder);
+			await workspaceFolder.init();
+			LH_WORKSPACES.push(workspaceFolder);
+		}
+	}
 }
 
 export async function activate(context: vscode.ExtensionContext) {
 	await init();
-	// initGUI();
+	initGUI();
 
 	vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
 
@@ -147,7 +151,7 @@ export type diff = {
 export type commit = {
 	name: string,
 	content: string,
-	activePatch: number,
+	activePatchIndex: number,
 	patches: patch[],
 	date: string
 }

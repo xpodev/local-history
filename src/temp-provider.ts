@@ -10,8 +10,10 @@ const tempFileProvider = new (class implements vscode.TextDocumentContentProvide
 		this.filePath = uri;
 		const tempFile = vscode.Uri.parse(uri.path);
 		const pathParts = tempFile.path.split("/");
-		const index = parseInt(pathParts[-1]);
-		const diffType = pathParts[-2];
+		// Last part is for the diff to know what type of file is the virtual document.
+		pathParts.pop();
+		const index = parseInt(pathParts[pathParts.length - 1]);
+		const diffType = pathParts[pathParts.length - 2];
 		const filePath = vscode.Uri.parse(`file:${pathParts.slice(0, -2).join("/")}`);
 		const fileDiff = await DiffExt.load(filePath);
 		if (fileDiff) {

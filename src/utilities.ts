@@ -6,7 +6,7 @@ export function encode(str: string | undefined): Uint8Array {
     return (new TextEncoder()).encode(str);
 }
 
-export module dateUtils {
+export module DateUtils {
 
     const monthNames = [
         "January", "February", "March", "April", "May", "June", "July",
@@ -106,7 +106,7 @@ export module dateUtils {
     }
 }
 
-export module fsUtils {
+export module FileSystemUtils {
     export async function writeFile(filePath: vscode.Uri, data: string): Promise<void> {
         if (!(await fileExists(filePath))) {
             await vscode.workspace.fs.createDirectory(parentFolder(filePath));
@@ -129,5 +129,10 @@ export module fsUtils {
 
     export function parentFolder(uriPath: vscode.Uri): vscode.Uri {
         return vscode.Uri.joinPath(uriPath, '..');
+    }
+
+    export function filename(uriPath: vscode.Uri): string {
+        const parts = uriPath.path.split("/");
+        return parts[parts.length - 1];
     }
 }

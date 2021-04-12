@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as Diff from 'diff';
 import { EOL } from 'os';
-import { encode, fsUtils } from './utilities';
+import { encode, FileSystemUtils } from './utilities';
 
 const NULL_PATCH = Diff.createPatch('', '', '');
 const TEMP_SCHEME = "temp";
@@ -12,10 +12,23 @@ export enum DiffType {
 }
 
 class Commit {
-    constructor(public content: string, public name: string) {
-
+    constructor(data: commit);
+    constructor(content: string, name: string);
+    constructor(data: string | commit, name?: string) {
+        if (typeof data == 'string') {
+            this.name = name!;
+            this.content = data;
+        } else {
+            this.name = data.name;
+            this.date = data.date;
+            this.content = data.content;
+            this.patches = data.patches;
+            this.activePatchIndex = data.activePatch;
+        }
     }
 
+    public name: string;
+    public content: string;
     public activePatchIndex: number = 0;
     public readonly patches: patch[] = [];
     public readonly date: string = new Date().toISOString();
@@ -46,7 +59,7 @@ class Commit {
 export class DiffExt {
     constructor(sourceFile: vscode.Uri) {
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(sourceFile);
-        this.rootDir = workspaceFolder ? workspaceFolder.uri : fsUtils.parentFolder(sourceFile);
+        this.rootDir = workspaceFolder ? workspaceFolder.uri : FileSystemUtils.parentFolder(sourceFile);
         this.lhFolder = vscode.Uri.joinPath(this.rootDir, ".lh");
         this._sourceFile = vscode.workspace.asRelativePath(sourceFile, false);
         this.commits = [];
@@ -82,10 +95,10 @@ export class DiffExt {
     newCommit(data: string, name?: string) {
         name = name ?? `Commit-${this.commits.length}`;
         let createdCommit = new Commit(data, name);
-        
+
         // Elazar thinks it's better like that
         createdCommit.newPatch(NULL_PATCH);
-        
+
         this.commits.push(createdCommit);
         this.activeCommitIndex = this.commits.length - 1;
     }
@@ -127,16 +140,19 @@ export class DiffExt {
     }
 
     tempURI(diffType: DiffType, index: number) {
-        return vscode.Uri.joinPath(this.sourceFile.with({ scheme: TEMP_SCHEME }), `${diffType}/${index}`);
+        return vscode.Uri.joinPath(
+            this.sourceFile.with({ scheme: TEMP_SCHEME }),
+            `${diffType}/${index}/${FileSystemUtils.filename(this.sourceFile)}` // The last part is there for intellisense, it is removed in the tempFileProvider
+        );
     }
 
     async restoreCommit(index: number) {
-        await fsUtils.writeFile(this.sourceFile, this.getCommit(index));
+        await FileSystemUtils.writeFile(this.sourceFile, this.getCommit(index));
         this.activeCommitIndex = index;
     }
 
     async restorePatch(index: number, commitIndex?: number) {
-        await fsUtils.writeFile(this.sourceFile, this.getPatched(index, commitIndex));
+        await FileSystemUtils.writeFile(this.sourceFile, this.getPatched(index, commitIndex));
         if (commitIndex != undefined) {
             this.activeCommitIndex = commitIndex;
         }
@@ -144,9 +160,11 @@ export class DiffExt {
     }
 
     async loadDiff() {
-        if (await fsUtils.fileExists(this.getDiffPath())) {
-            const fileData: diff = JSON.parse(await fsUtils.readFile(this.getDiffPath()));
-            this.commits = fileData.commits;
+        if (await FileSystemUtils.fileExists(this.getDiffPath())) {
+            const fileData = JSON.parse(await FileSystemUtils.readFile(this.getDiffPath()));
+            fileData.commits.forEach((data: commit) => {
+                this.commits.push(new Commit(data));
+            })
             this.activeCommitIndex = fileData.activeCommit;
         }
     }
@@ -160,15 +178,6 @@ export class DiffExt {
         await diffObj.loadDiff();
         return diffObj;
     }
-}
-
-async function ignoredFiles(rootDir: vscode.Uri): Promise<string[]> {
-	const lh_ignore = ['\\.lh/.*'];
-    const ignoreFile = vscode.Uri.joinPath(rootDir, '.lhignore');
-	if (await fsUtils.fileExists(ignoreFile)) {
-		lh_ignore.concat((await vscode.workspace.fs.readFile(ignoreFile)).toString().split(EOL).filter(Boolean));
-	}
-    return lh_ignore;
 }
 
 type diff = {
