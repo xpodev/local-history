@@ -134,8 +134,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
 
-	let createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', createCommit);
+	const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {
+		await createCommit();
+	});
 
+	context.subscriptions.push(createCommitCmd);
 	context.subscriptions.push(onSave);
 }
 

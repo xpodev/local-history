@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as Diff from 'diff';
 import { EOL } from 'os';
 import { encode, FileSystemUtils } from './utilities';
+import { config } from './extension';
 
 const NULL_PATCH = Diff.createPatch('', '', '');
 const TEMP_SCHEME = "temp";
@@ -102,7 +103,12 @@ export class DiffExt {
 
         // Elazar thinks it's better like that
         createdCommit.newPatch(NULL_PATCH);
-
+        if (config.deletePatchesAfterCommit) {
+            this.commits.forEach((commit) => {
+                commit.patches = [];
+                commit.activePatchIndex = 0;
+            });
+        }
         this.commits.push(createdCommit);
         this.activeCommitIndex = this.commits.length - 1;
     }
