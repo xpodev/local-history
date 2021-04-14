@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as Diff from 'diff';
-import { EOL } from 'os';
 import { encode, FileSystemUtils } from './utilities';
 import { config } from './extension';
 

@@ -144,23 +144,3 @@ export async function activate(context: vscode.ExtensionContext) {
 
 // this method is called when your extension is deactivated
 export function deactivate() { }
-
-export type diff = {
-	sourceFile: string,
-	activeCommit: number,
-	commits: commit[]
-}
-
-export type commit = {
-	name: string,
-	content: string,
-	activePatchIndex: number,
-	patches: patch[],
-	date: string
-}
-
-export type patch = {
-	content: string,
-	date: string
-}
-
