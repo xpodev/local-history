@@ -144,8 +144,6 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
     }
 }
 
-}
-
 class PathItem extends vscode.TreeItem {
 
     constructor(
