@@ -2,8 +2,6 @@ import { EOL } from 'os';
 import * as vscode from 'vscode';
 import { FileSystemUtils } from './utilities';
 
-const enabled = true;
-
 export const LH_WORKSPACES: LHWorkspaceFolderProvider[] = [];
 
 const LH_DIR = ".lh";

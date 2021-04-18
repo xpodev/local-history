@@ -14,11 +14,12 @@ import { LHWorkspaceFolderProvider, LH_WORKSPACES } from './workspace-folder-pro
 // CR Neriya: Fixed.
 
 const TEMP_SCHEME = "temp";
+let timeDelay = Date.now();
 
 // CR Elazar: I think it should be implement with some "IgnoreProvider" of some sort. see https://www.npmjs.com/package/ignore
 // CR Neriya: For now it's good. I don't really want to add more modules into this extension.
 
-export const config = {
+const config = {
 	dateFormat: "dd-MM-yy",
 	lastDateAgo: 1000 * 60 * 5, // Hardcoded 5 minutes, for test purposes
 	deletePatchesAfterCommit: false
@@ -30,13 +31,15 @@ const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
 	if (workspaceFolderId == undefined) {
 		return;
 	} else {
+		if ((Date.now() - timeDelay) < vscode.workspace.getConfiguration("local-history").get<number>("commits.patchDelay")!) {
+			return;
+		}
 		if (await LH_WORKSPACES[workspaceFolderId].isIgnored(filePath)) {
 			return;
 		} else {
-			// let diskData: Promise<string>;
 			let diskData = await FileSystemUtils.readFile(saveEvent.document.uri)
-			// saveEvent.waitUntil();
 			await createDiff(saveEvent.document, diskData);
+			timeDelay = Date.now();
 		}
 	}
 });
@@ -119,6 +122,12 @@ async function init(): Promise<void> {
 	// CR Elazar: forgot to finish the sentence... won't it work to simply createDirectory?
 	//		the documentation hints it would not be a problem if it's already exists.
 	//		if so, you can trim this function into 3 lines.  
+
+	await loadWorkspaceFolders();
+}
+
+async function loadWorkspaceFolders() {
+	LH_WORKSPACES.splice(0, LH_WORKSPACES.length);
 	if (vscode.workspace.workspaceFolders) {
 		for (const folder of vscode.workspace.workspaceFolders) {
 			const workspaceFolder = new LHWorkspaceFolderProvider(folder);
@@ -129,17 +138,23 @@ async function init(): Promise<void> {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-	await init();
-	initGUI();
+	if (vscode.workspace.getConfiguration('local-history').get<boolean>('enable')) {
+		await init();
+		initGUI();
 
-	vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
+		vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
 
-	const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {
-		await createCommit();
-	});
+		const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {
+			await createCommit();
+		});
 
-	context.subscriptions.push(createCommitCmd);
-	context.subscriptions.push(onSave);
+		vscode.workspace.onDidChangeWorkspaceFolders(async () => {
+			await loadWorkspaceFolders();
+		});
+
+		context.subscriptions.push(createCommitCmd);
+		context.subscriptions.push(onSave);
+	}
 }
 
 // this method is called when your extension is deactivated

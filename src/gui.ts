@@ -89,21 +89,24 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
         return element;
     }
 
-    getChildren(element?: PathItem): vscode.ProviderResult<PathItem[]> {
-        const f: PathItem[] = [];
+    async getChildren(element?: PathItem): Promise<PathItem[] | null | undefined> {
+        const rootFolders: PathItem[] = [];
         if (element) {
             return Promise.resolve(this.scanFolder(element.resourceUri));
+        } else {
+            for (const folder of LH_WORKSPACES) {
+                if (await FileSystemUtils.fileExists(vscode.Uri.joinPath(folder.rootDir.uri, '.lh'))) {
+                    rootFolders.push(
+                        new PathItem(
+                            folder.rootDir.name,
+                            vscode.TreeItemCollapsibleState.Collapsed,
+                            folder.rootDir.uri
+                        )
+                    );
+                }
+            }
+            return rootFolders;
         }
-        LH_WORKSPACES.forEach((folder) => {
-            f.push(
-                new PathItem(
-                    folder.rootDir.name,
-                    vscode.TreeItemCollapsibleState.Collapsed,
-                    folder.rootDir.uri
-                )
-            );
-        })
-        return f;
     }
 
     async scanFolder(folderPath: vscode.Uri): Promise<PathItem[]> {
@@ -139,6 +142,7 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
         });
         return folders.concat(files);
     }
+}
 
 }
 
@@ -168,6 +172,8 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
 
     private _descending: boolean = true;
     private _currentFile!: vscode.Uri;
+
+    private static descending: boolean = true;
 
     // Change from Commit/Patched to all commits.
     async refresh(): Promise<void> {
@@ -227,6 +233,8 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
 
     async toggleOrder() {
         this._descending = !this._descending;
+        const config = vscode.workspace.getConfiguration("local-history");
+        await config.update("browser.descending", this._descending);
         await this.refresh();
     }
 }
@@ -250,7 +258,7 @@ async function openCommit(fileDiff: DiffExt, index: number) {
 async function openPatch(fileDiff: DiffExt, index: number) {
     const sourceFile = fileDiff.sourceFile;
     const patched = fileDiff.getPatched(index);
-    if (patched) {
+    if (patched || patched === '') {
         const tempFile = fileDiff.tempURI(DiffType.Patch, index);
         const formattedDate = new DateUtils.DateExt(fileDiff.activeCommit.patches[index].date).represent();
         vscode.commands.executeCommand(
@@ -296,7 +304,7 @@ export function initGUI() {
     vscode.window.registerTreeDataProvider('localHistoryFileBrowser', browserNodeProvider);
     vscode.window.registerTreeDataProvider('localHistoryDiffBrowser', diffNodeProvider);
 
-    vscode.commands.registerCommand('local-history.refresh-file-browser', () => {
+    vscode.commands.registerCommand('local-history.diff-browser.refresh-file-browser', () => {
         browserNodeProvider.refresh();
     });
     vscode.commands.registerCommand('local-history.diff-browser.open-source', async (filePath: vscode.Uri) => {
@@ -321,7 +329,10 @@ export function initGUI() {
     vscode.commands.registerCommand('local-history.diff-browser.rename-commit', async (selectedItem: DiffItem) => {
         await renameCommit(selectedItem);
     });
-    vscode.commands.registerCommand('local-history.diff-browser.change-order', async (selectedItem: DiffItem) => {
+    vscode.commands.registerCommand('local-history.diff-browser.order-ascending', async () => {
+        await diffNodeProvider.toggleOrder();
+    });
+    vscode.commands.registerCommand('local-history.diff-browser.order-descending', async () => {
         await diffNodeProvider.toggleOrder();
     });
 

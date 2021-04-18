@@ -14,21 +14,58 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"configuration": {
+			"title": "Local History",
+			"properties": {
+				"local-history.enable": {
+					"type": "boolean",
+					"default": "true",
+					"description": "Follow and save changes"
+				},
+				"local-history.browser.descending": {
+					"type": "boolean",
+					"default": "true",
+					"description": "Checked - descending\nNot checked - ascending"
+				},
+				"local-history.commits.clearPatches": {
+					"type": "boolean",
+					"default": true,
+					"description": "Clear all previous patches after creating commit"
+				},
+				"local-history.commits.patchDelay": {
+					"type": "integer",
+					"default": 5,
+					"description": "Add patch creation delay (in seconds)"
+				},
+				"local-history.date.dateFormat": {
+					"type": "string",
+					"default": "DD-MM-YY hh:mm",
+					"markdownDescription": "Date format string (ISO 8601) [More](https://help.xpo.dev/local-history/date)"
+				},
+				"local-history.date.dateRepresentation": {
+					"type": "string",
+					"enum": [
+						"1 Hour",
+						"2 Hours",
+						"4 Hours",
+						"8 Hours",
+						"1 Day",
+						"7 Days",
+						"30 Days",
+						"Never"
+					],
+					"default": "7 Days",
+					"description": "After the time passed the browser will show the date instead of how much time passed (e.g. 5 minutes ago)"
+				}
+			}
+		},
 		"commands": [
-			{
-				"command": "local-history.restore-patch",
-				"title": "Local History: Restore Patch"
-			},
-			{
-				"command": "local-history.restore-commit",
-				"title": "Local History: Restore Commit"
-			},
 			{
 				"command": "local-history.create-commit",
 				"title": "Local History: Create Commit"
 			},
 			{
-				"command": "local-history.refresh-file-browser",
+				"command": "local-history.diff-browser.refresh-file-browser",
 				"title": "Refresh",
 				"icon": "$(timeline-refresh)"
 			},
@@ -54,12 +91,17 @@
 			},
 			{
 				"command": "local-history.diff-browser.delete-commit",
-				"title": "Delete"
+				"title": "Delete Commit"
 			},
 			{
-				"command": "local-history.diff-browser.change-order",
-				"title": "Diff Browser: Change Order",
+				"command": "local-history.diff-browser.order-ascending",
+				"title": "New to old",
 				"icon": "$(arrow-up)"
+			},
+			{
+				"command": "local-history.diff-browser.order-descending",
+				"title": "Old to new",
+				"icon": "$(arrow-down)"
 			}
 		],
 		"viewsContainers": {
@@ -96,14 +138,6 @@
 		"menus": {
 			"commandPalette": [
 				{
-					"command": "local-history.restore-patch",
-					"when": "false"
-				},
-				{
-					"command": "local-history.restore-commit",
-					"when": "false"
-				},
-				{
 					"command": "local-history.create-commit",
 					"title": "Local History: Create Commit"
 				},
@@ -134,13 +168,18 @@
 			],
 			"view/title": [
 				{
-					"command": "local-history.refresh-file-browser",
+					"command": "local-history.diff-browser.refresh-file-browser",
 					"when": "view == localHistoryFileBrowser",
 					"group": "navigation"
 				},
 				{
-					"command": "local-history.diff-browser.change-order",
-					"when": "view == localHistoryDiffBrowser",
+					"command": "local-history.diff-browser.order-ascending",
+					"when": "view == localHistoryDiffBrowser && config.local-history.browser.descending == false",
+					"group": "navigation"
+				},
+				{
+					"command": "local-history.diff-browser.order-descending",
+					"when": "view == localHistoryDiffBrowser && config.local-history.browser.descending == true",
 					"group": "navigation"
 				}
 			],

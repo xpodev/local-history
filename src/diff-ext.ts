@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as Diff from 'diff';
 import { encode, FileSystemUtils } from './utilities';
-import { config } from './extension';
 
 const NULL_PATCH = Diff.createPatch('', '', '');
 const TEMP_SCHEME = "temp";
@@ -31,7 +30,7 @@ class Commit {
     public content: string;
     public activePatchIndex: number = 0;
     public patches: patch[] = [];
-    public readonly date: string = new Date().toISOString();
+    public readonly date: number = Date.now();
 
     get activePatch(): patch {
         return this.patches[this.activePatchIndex];
@@ -43,14 +42,14 @@ class Commit {
             this.patches.splice(this.activePatchIndex + 1);
         }
         this.patches.push({
-            date: new Date().toISOString(),
+            date: Date.now(),
             content: content
         });
         this.activePatchIndex = this.patches.length - 1;
     }
 
-    getPatched(index: number) {
-        let patched = this.content;
+    getPatched(index: number): string {
+        let patched: string = this.content;
         for (let i = 0; i <= index; i++) {
             const patchString = this.patches[i].content;
             const uniDiff = Diff.parsePatch(patchString);
@@ -102,7 +101,8 @@ export class DiffExt {
 
         // Elazar thinks it's better like that
         createdCommit.newPatch(NULL_PATCH);
-        if (config.deletePatchesAfterCommit) {
+        const deletePatches = vscode.workspace.getConfiguration("local-history").get<boolean>("commits.clearPatches");
+        if (deletePatches) {
             this.commits.forEach((commit) => {
                 commit.patches = [];
                 commit.activePatchIndex = 0;
@@ -134,7 +134,7 @@ export class DiffExt {
         return vscode.Uri.joinPath(this.lhFolder, `${relativeFilePath}.json`);
     }
 
-    getPatched(index: number, commitIndex?: number) {
+    getPatched(index: number, commitIndex?: number): string {
         let commit;
         if (commitIndex != undefined) {
             commit = this.commits[commitIndex];
@@ -200,10 +200,10 @@ type commit = {
     content: string,
     activePatch: number,
     patches: patch[],
-    date: string
+    date: number
 }
 
 type patch = {
     content: string,
-    date: string
+    date: number
 }
