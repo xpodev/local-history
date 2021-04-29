@@ -1,8 +1,8 @@
 import { EOL } from 'os';
 import * as vscode from 'vscode';
-import { fsUtils } from './utilities';
+import { FileSystemUtils } from './utilities';
 
-const enabled = true;
+export const LH_WORKSPACES: LHWorkspaceFolderProvider[] = [];
 
 const LH_DIR = ".lh";
 const LH_IGNORE_FIlE = `${LH_DIR}/.lhignore`;
@@ -17,23 +17,30 @@ export class LHWorkspaceFolderProvider {
     public readonly lhDir: vscode.Uri;
 
     async init() {
-        if (await fsUtils.fileExists(this.ignoreFile)) {
+        if (await FileSystemUtils.fileExists(this.ignoreFile)) {
             return;
         } else {
-            if (!(await fsUtils.fileExists(this.lhDir))) {
+            if (!(await FileSystemUtils.fileExists(this.lhDir))) {
                 await vscode.workspace.fs.createDirectory(this.lhDir);
             }
             // CR Elazar: I think you shouldn't add ".lh/*" to this file. I think it should be ignored by default.
             // CR Neriya: And if someone wants to add diffs to the lh folder?
             // CR Elazar: you may drown him
-            await fsUtils.writeFile(this.ignoreFile, "");
+            await FileSystemUtils.writeFile(this.ignoreFile, "");
         }
     }
 
     async ignoredFiles() {
         let lhIgnore = ['\\.lh/.*'];
-        if (await fsUtils.fileExists(this.ignoreFile)) {
-            lhIgnore = lhIgnore.concat((await fsUtils.readFile(this.ignoreFile)).split(EOL).filter(Boolean));
+        if (await FileSystemUtils.fileExists(this.ignoreFile)) {
+            lhIgnore = lhIgnore.concat(
+                (await FileSystemUtils.readFile(this.ignoreFile))
+                .split(EOL)
+                .filter(Boolean)
+                .filter((line) => {
+                    return !(new RegExp(`^#.*$`).test(line));
+                })
+                );
         }
         return lhIgnore;
     }
@@ -45,4 +52,13 @@ export class LHWorkspaceFolderProvider {
             return new RegExp(`^${pattern}$`).test(relativePath);
         }).length > 0;
     }
+}
+
+export function isLHDir(folderUri: vscode.Uri): boolean {
+    for (const folder of LH_WORKSPACES) {
+        if (folderUri.path === folder.lhDir.path) {
+            return true;
+        }
+    }
+    return false;
 }

@@ -105,7 +105,8 @@
 				},
 				{
 					"command": "local-history.create-commit",
-					"title": "Local History: Create Commit"
+					"title": "Local History: Create Commit",
+					"when": "editorTextFocus"
 				},
 				{
 					"command": "local-history.diff-browser.open-source",

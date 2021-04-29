@@ -2,40 +2,37 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as Diff from 'diff';
-import { dateUtils, fsUtils, encode } from './utilities';
-// import { initGUI } from './gui';
-import { EOL } from 'os';
+import { DateUtils, FileSystemUtils } from './utilities';
+import { initGUI, diffNodeProvider } from './gui';
 import { DiffExt } from './diff-ext';
 import tempFileProvider from './temp-provider';
-import { LHWorkspaceFolderProvider } from './workspace-folder-provider';
+import { LHWorkspaceFolderProvider, LH_WORKSPACES } from './workspace-folder-provider';
 
 // CR Elazar: now that I got to the end of the file, I think we should address it properly:
 // 		in vscode you can have multiple folders opened in the same workspace.
 // CR Neriya: Fixed.
 
 const TEMP_SCHEME = "temp";
+let timeDelay = Date.now();
 
 // CR Elazar: I think it should be implement with some "IgnoreProvider" of some sort. see https://www.npmjs.com/package/ignore
 // CR Neriya: For now it's good. I don't really want to add more modules into this extension.
-let lh_ignore: string[] = [];
-const LH_WORKSPACES: LHWorkspaceFolderProvider[] = [];
-
-export const config = {
-	dateFormat: "dd-MM-yy",
-	lastDateAgo: 1000 * 60 * 5, // Hardcoded 5 minutes, for test purposes
-	deletePatchesAfterCommit: false
-}
 
 const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
 	const filePath = saveEvent.document.uri;
 	const workspaceFolderId = vscode.workspace.getWorkspaceFolder(filePath)?.index;
-	if (workspaceFolderId) {
+	if (workspaceFolderId == undefined) {
+		return;
+	} else {
+		if ((Date.now() - timeDelay) < vscode.workspace.getConfiguration("local-history").get<number>("commits.patchDelay")!) {
+			return;
+		}
 		if (await LH_WORKSPACES[workspaceFolderId].isIgnored(filePath)) {
 			return;
 		} else {
-			let diskData;
-			saveEvent.waitUntil(diskData = vscode.workspace.fs.readFile(saveEvent.document.uri));
-			await createDiff(saveEvent.document, (await diskData).toString());
+			let diskData = await FileSystemUtils.readFile(saveEvent.document.uri)
+			await createDiff(saveEvent.document, diskData);
+			timeDelay = Date.now();
 		}
 	}
 });
@@ -47,7 +44,7 @@ async function createDiff(document: vscode.TextDocument, diskData: string): Prom
 	if (fileDiff.commits.length > 0) {
 		const activeCommit = fileDiff.activeCommit;
 		const lastPatch = fileDiff.getPatched(activeCommit.activePatchIndex);
-		// Dear future Me, this is or when the user is changing document outside of
+		// Dear future Me, this is for when the user is changing document outside of
 		// 		VS Code. If it'll check against the disk data it'll break the patches.
 		// 		Hope you'll understand.
 		const oldData = newData !== diskData ? diskData : lastPatch;
@@ -88,7 +85,7 @@ export async function createCommit(filePath?: vscode.Uri) {
 		newData = (await vscode.workspace.fs.readFile(filePath)).toString();
 	}
 	const fileDiff = await DiffExt.load(filePath);
-	const commitDate = new dateUtils.DateExt();
+	const commitDate = new DateUtils.DateExt();
 	const commitDefaultName = `Commit${fileDiff ? fileDiff.commits.length : 1}-${commitDate.format()}`;
 	let commitName = await vscode.window.showInputBox({
 		prompt: "Enter commit name",
@@ -104,6 +101,7 @@ export async function createCommit(filePath?: vscode.Uri) {
 
 	fileDiff.newCommit(newData, commitName);
 	await fileDiff.save();
+	await diffNodeProvider.refresh();
 }
 
 async function init(): Promise<void> {
@@ -117,43 +115,40 @@ async function init(): Promise<void> {
 	// CR Elazar: forgot to finish the sentence... won't it work to simply createDirectory?
 	//		the documentation hints it would not be a problem if it's already exists.
 	//		if so, you can trim this function into 3 lines.  
-	vscode.workspace.workspaceFolders?.forEach(async (folder) => {
-		const workspaceFolder = new LHWorkspaceFolderProvider(folder);
-		await workspaceFolder.init();
-		LH_WORKSPACES.push(workspaceFolder);
-	});
+
+	await loadWorkspaceFolders();
+}
+
+async function loadWorkspaceFolders() {
+	LH_WORKSPACES.splice(0, LH_WORKSPACES.length);
+	if (vscode.workspace.workspaceFolders) {
+		for (const folder of vscode.workspace.workspaceFolders) {
+			const workspaceFolder = new LHWorkspaceFolderProvider(folder);
+			await workspaceFolder.init();
+			LH_WORKSPACES.push(workspaceFolder);
+		}
+	}
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-	await init();
-	// initGUI();
+	if (vscode.workspace.getConfiguration('local-history').get<boolean>('enable')) {
+		await init();
+		initGUI();
 
-	vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
+		vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
 
-	let createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', createCommit);
+		const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {
+			await createCommit();
+		});
 
-	context.subscriptions.push(onSave);
+		vscode.workspace.onDidChangeWorkspaceFolders(async () => {
+			await loadWorkspaceFolders();
+		});
+
+		context.subscriptions.push(createCommitCmd);
+		context.subscriptions.push(onSave);
+	}
 }
 
 // this method is called when your extension is deactivated
 export function deactivate() { }
-
-export type diff = {
-	sourceFile: string,
-	activeCommit: number,
-	commits: commit[]
-}
-
-export type commit = {
-	name: string,
-	content: string,
-	activePatch: number,
-	patches: patch[],
-	date: string
-}
-
-export type patch = {
-	content: string,
-	date: string
-}
-

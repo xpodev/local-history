@@ -1,12 +1,22 @@
 import * as vscode from "vscode";
 import { TextEncoder } from "util";
-import { config } from "./extension";
 
 export function encode(str: string | undefined): Uint8Array {
     return (new TextEncoder()).encode(str);
 }
 
-export module dateUtils {
+export module DateUtils {
+
+    enum timeAgoE {
+        "1 Hour" = 1 * 60 * 60 * 1000,
+        "2 Hours" = timeAgoE["1 Hour"] * 2,
+        "4 Hours" = timeAgoE["1 Hour"] * 4,
+        "8 Hours" = timeAgoE["1 Hour"] * 8,
+        "1 Day" = timeAgoE["1 Hour"] * 24,
+        "7 Days" = timeAgoE["1 Day"] * 7,
+        "30 Days" = timeAgoE["1 Day"] * 30,
+        "Never" = Infinity
+    }
 
     const monthNames = [
         "January", "February", "March", "April", "May", "June", "July",
@@ -24,7 +34,6 @@ export module dateUtils {
 
     export class DateExt extends Date {
         public static readonly timeStep: timestep = {
-            millisecond: 1,
             second: 1000,
             minute: 60000,
             hour: 3600000,
@@ -42,11 +51,16 @@ export module dateUtils {
                 value = Date.now();
             }
             super(value);
+            this._dateFormat = vscode.workspace.getConfiguration('local-history').get<string>('date.dateFormat');
+            this._timeAgo = vscode.workspace.getConfiguration('local-history').get<string>('date.dateRepresentation')!;
         }
 
+        private _dateFormat;
+        private _timeAgo: string;
+
         format(formatStr?: string) {
-            if (!formatStr) {
-                formatStr = config.dateFormat;
+            if (formatStr) {
+                this._dateFormat = formatStr;
             }
             const day = this.getDate(),
                 month = this.getMonth(),
@@ -60,32 +74,33 @@ export module dateUtils {
                 ss = twoDigitPad(second),
                 EEEE = dayOfWeekNames[this.getDay()],
                 EEE = EEEE.substr(0, 3),
-                dd = twoDigitPad(day),
+                DD = twoDigitPad(day),
                 M = month + 1,
                 MM = twoDigitPad(M),
                 MMMM = monthNames[month],
                 MMM = MMMM.substr(0, 3),
-                yyyy = year + "",
-                yy = yyyy.substr(2, 2)
+                YYYY = year + "",
+                YY = YYYY.substr(2, 2)
                 ;
-            return formatStr
+            return this._dateFormat!
                 .replace('hh', hh.toString()).replace('h', hour.toString())
                 .replace('mm', mm.toString()).replace('m', minute.toString())
                 .replace('ss', ss.toString()).replace('s', second.toString())
                 .replace('S', milliseconds.toString())
-                .replace('dd', dd.toString()).replace('d', day.toString())
+                .replace('DD', DD.toString()).replace('D', day.toString())
                 .replace('MMMM', MMMM).replace('MMM', MMM).replace('MM', MM.toString()).replace('M', M.toString())
                 .replace('EEEE', EEEE).replace('EEE', EEE)
-                .replace('yyyy', yyyy)
-                .replace('yy', yy)
+                .replace('YYYY', YYYY)
+                .replace('YY', YY)
                 ;
         }
 
         represent(): string {
             const now = Date.now();
             const timeDiff = now - +this;
-            if (timeDiff >= config.lastDateAgo) {
-                return this.format(`${config.dateFormat} hh:mm`);
+            const f = timeAgoE[this._timeAgo as keyof typeof timeAgoE]
+            if (timeDiff >= f) {
+                return this.format(`${this._dateFormat}`);
             }
             let timeAgo = 0;
             let timeStr = "Now";
@@ -106,7 +121,7 @@ export module dateUtils {
     }
 }
 
-export module fsUtils {
+export module FileSystemUtils {
     export async function writeFile(filePath: vscode.Uri, data: string): Promise<void> {
         if (!(await fileExists(filePath))) {
             await vscode.workspace.fs.createDirectory(parentFolder(filePath));
@@ -129,5 +144,10 @@ export module fsUtils {
 
     export function parentFolder(uriPath: vscode.Uri): vscode.Uri {
         return vscode.Uri.joinPath(uriPath, '..');
+    }
+
+    export function filename(uriPath: vscode.Uri): string {
+        const parts = uriPath.path.split("/");
+        return parts[parts.length - 1];
     }
 }
