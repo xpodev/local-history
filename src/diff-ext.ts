@@ -22,6 +22,7 @@ class Commit {
             this.date = data.date;
             this.content = data.content;
             this.patches = data.patches;
+            // CR Elazar: bug. should have been `this.activePatchIndex = data.activePatchIndex`
             this.activePatchIndex = data.activePatch;
         }
     }
@@ -101,6 +102,7 @@ export class DiffExt {
 
         // Elazar thinks it's better like that
         createdCommit.newPatch(NULL_PATCH);
+        // CR Elazar: rename `clearPatches` to `clearPatchesOnNewCommit` 
         const deletePatches = vscode.workspace.getConfiguration("local-history").get<boolean>("commits.clearPatches");
         if (deletePatches) {
             this.commits.forEach((commit) => {
@@ -158,6 +160,7 @@ export class DiffExt {
     async restoreCommit(index: number) {
         await FileSystemUtils.writeFile(this.sourceFile, this.getCommit(index));
         this.activeCommitIndex = index;
+        // CR Elazar: do we need to call this.save() here?
     }
 
     async restorePatch(index: number, commitIndex?: number) {
@@ -166,6 +169,7 @@ export class DiffExt {
             this.activeCommitIndex = commitIndex;
         }
         this.activeCommit.activePatchIndex = index;
+        // CR Elazar: do we need to call this.save() here?
     }
 
     async loadDiff() {
@@ -198,6 +202,7 @@ type diff = {
 type commit = {
     name: string,
     content: string,
+    // CR Elazar: probably need to change to activePatchIndex
     activePatch: number,
     patches: patch[],
     date: number

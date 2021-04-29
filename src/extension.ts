@@ -9,16 +9,16 @@ import { DiffExt } from './diff-ext';
 import tempFileProvider from './temp-provider';
 import { LHWorkspaceFolderProvider, LH_WORKSPACES } from './workspace-folder-provider';
 
-// CR Elazar: now that I got to the end of the file, I think we should address it properly:
-// 		in vscode you can have multiple folders opened in the same workspace.
-// CR Neriya: Fixed.
+// CR Elazar: package.json comments:
+//   line 142: add { "when" : "editorTextFocus" } clause
 
 const TEMP_SCHEME = "temp";
+// CR Elazar: hmm... the time delay is global to all the files. I don't think that's a good idea. 
+//   maybe create a time-delay for each saved file, e.g. in a global dict.
+// 	 my suggested flow: check ignored -> check delay -> create diff.
 let timeDelay = Date.now();
 
-// CR Elazar: I think it should be implement with some "IgnoreProvider" of some sort. see https://www.npmjs.com/package/ignore
-// CR Neriya: For now it's good. I don't really want to add more modules into this extension.
-
+// CR Elazar: vscode complains `config` is not in use.
 const config = {
 	dateFormat: "dd-MM-yy",
 	lastDateAgo: 1000 * 60 * 5, // Hardcoded 5 minutes, for test purposes
@@ -78,10 +78,6 @@ export async function restoreCommit(filePath: vscode.Uri, index: number): Promis
 export async function createCommit(filePath?: vscode.Uri) {
 	let newData;
 	if (!filePath) {
-		// CR Elazar: is vscode.window.activeTextEditor never `undefined`?
-		// CR Neriya: same comment for createPatch
-		// CR Elazar: so same answer. disable the command, depends on the state. you can leave the 
-		//		code here as is, just in case 
 		if (vscode.window.activeTextEditor) {
 			filePath = vscode.window.activeTextEditor.document.uri;
 			newData = vscode.window.activeTextEditor.document.getText();
@@ -112,17 +108,6 @@ export async function createCommit(filePath?: vscode.Uri) {
 }
 
 async function init(): Promise<void> {
-	// CR Elazar: you should verify vscode is opened inside a folder. e.g. by:
-	// 	if (vscode.workspace.workspaceFolders) {
-	// CR Neriya: Actually, you can track file even if vscode is open as text editor.
-	// CR Elazar: and where it's going to be saved, the history json files?
-
-	// CR Elazar: I think you can safely remove this if. either way we  
-	// CR Neriya: what?
-	// CR Elazar: forgot to finish the sentence... won't it work to simply createDirectory?
-	//		the documentation hints it would not be a problem if it's already exists.
-	//		if so, you can trim this function into 3 lines.  
-
 	await loadWorkspaceFolders();
 }
 
@@ -142,6 +127,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		await init();
 		initGUI();
 
+		// CR Elazar: I didn't understand when you choose to add the returned disposable to the context.subscriptions.
+		//	for some reason you decided to not add it here, and also not at onDidChangeWorkspaceFolders.
+		//  though, I can't tell when it is necessary and when it doesn't 
 		vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
 
 		const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {

@@ -19,6 +19,9 @@ class DiffItem extends vscode.TreeItem {
             this.description = date.represent();
             this.contextValue = "commitDiffItem";
         } else if (this.type == DiffType.Patch) {
+            // CR Elazar: I don't think you need the `activePatches` here. this was good before 
+            //  we had the option to keep patches of old commits. it causes a bug, I get "cant read property 
+            //  date of undefined". see also comment at line 202
             const date = new DateUtils.DateExt(this.diff.activePatches[index].date);
             this.description = date.represent();
             this.contextValue = "patchDiffItem";
@@ -196,6 +199,8 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
 
     loadPatches(fileDiff: DiffExt, index: number): DiffItem[] {
         let commitPatches: DiffItem[] = [];
+        // CR Elazar: there's a bug here. probably due to the 2 variables named `index`. it's related to 
+        //  the comment at the beginning
         fileDiff.commits[index].patches.forEach((value, index) => {
             const onOpenPatch = new OpenPatchCmd("Local History: Open Patch", "local-history.diff-browser.open-patch", [fileDiff, index])
             commitPatches.push(new DiffItem(`patch-${index}`, vscode.TreeItemCollapsibleState.None, fileDiff, index, DiffType.Patch, onOpenPatch));
