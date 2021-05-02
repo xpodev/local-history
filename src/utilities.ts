@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { TextEncoder } from "util";
 
-export function encode(str: string | undefined): Uint8Array {
+export function encode(str?: string): Uint8Array {
     return (new TextEncoder()).encode(str);
 }
 
@@ -122,7 +122,7 @@ export module DateUtils {
 }
 
 export module FileSystemUtils {
-    export async function writeFile(filePath: vscode.Uri, data: string): Promise<void> {
+    export async function writeFile(filePath: vscode.Uri, data?: string): Promise<void> {
         if (!(await fileExists(filePath))) {
             await vscode.workspace.fs.createDirectory(parentFolder(filePath));
         }

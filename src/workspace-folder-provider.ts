@@ -26,7 +26,7 @@ export class LHWorkspaceFolderProvider {
             // CR Elazar: I think you shouldn't add ".lh/*" to this file. I think it should be ignored by default.
             // CR Neriya: And if someone wants to add diffs to the lh folder?
             // CR Elazar: you may drown him
-            await FileSystemUtils.writeFile(this.ignoreFile, "");
+            await FileSystemUtils.writeFile(this.ignoreFile);
         }
     }
 

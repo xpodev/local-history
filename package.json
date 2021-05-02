@@ -14,6 +14,51 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"configuration": {
+			"title": "Local History",
+			"properties": {
+				"local-history.enable": {
+					"type": "boolean",
+					"default": "true",
+					"description": "Follow and save changes"
+				},
+				"local-history.browser.descending": {
+					"type": "boolean",
+					"default": "true",
+					"description": "Checked - descending\nNot checked - ascending"
+				},
+				"local-history.commits.clearPatches": {
+					"type": "boolean",
+					"default": true,
+					"description": "Clear all previous patches after creating commit"
+				},
+				"local-history.commits.patchDelay": {
+					"type": "integer",
+					"default": 5,
+					"description": "Add patch creation delay (in seconds)"
+				},
+				"local-history.date.dateFormat": {
+					"type": "string",
+					"default": "DD-MM-YY hh:mm",
+					"markdownDescription": "Date format string (ISO 8601) [More](https://help.xpo.dev/local-history/date)"
+				},
+				"local-history.date.dateRepresentation": {
+					"type": "string",
+					"enum": [
+						"1 Hour",
+						"2 Hours",
+						"4 Hours",
+						"8 Hours",
+						"1 Day",
+						"7 Days",
+						"30 Days",
+						"Never"
+					],
+					"default": "7 Days",
+					"description": "After the time passed the browser will show the date instead of how much time passed (e.g. 5 minutes ago)"
+				}
+			}
+		},
 		"commands": [
 			{
 				"command": "local-history.restore-patch",
