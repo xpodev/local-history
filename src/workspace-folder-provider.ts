@@ -26,7 +26,15 @@ export class LHWorkspaceFolderProvider {
             // CR Elazar: I think you shouldn't add ".lh/*" to this file. I think it should be ignored by default.
             // CR Neriya: And if someone wants to add diffs to the lh folder?
             // CR Elazar: you may drown him
-            await FileSystemUtils.writeFile(this.ignoreFile);
+            await FileSystemUtils.writeFile(this.ignoreFile,
+                `# list file to not track by the local-history extension. comment line starts with a '#' character
+# each line describe a regular expression pattern (link to regular expression explanation on the web)
+# it will relate to the workspace directory root. for example:
+# ".*\\.txt" ignores any file with "txt" extension
+# "/test/.*" ignores all the files under the "test" directory
+# ".*/test/.*" ignores all the files under any "test" directory (even under sub-folders)
+`
+            );
         }
     }
 
@@ -35,12 +43,12 @@ export class LHWorkspaceFolderProvider {
         if (await FileSystemUtils.fileExists(this.ignoreFile)) {
             lhIgnore = lhIgnore.concat(
                 (await FileSystemUtils.readFile(this.ignoreFile))
-                .split(EOL)
-                .filter(Boolean)
-                .filter((line) => {
-                    return !(new RegExp(`^#.*$`).test(line));
-                })
-                );
+                    .split(EOL)
+                    .filter(Boolean)
+                    .filter((line) => {
+                        return !(new RegExp(`^#.*$`).test(line));
+                    })
+            );
         }
         return lhIgnore;
     }

@@ -33,7 +33,7 @@ export module DateUtils {
     }
 
     export class DateExt extends Date {
-        public static readonly timeStep: timestep = {
+        public static readonly timeStep: TimeStep = {
             second: 1000,
             minute: 60000,
             hour: 3600000,
@@ -116,7 +116,7 @@ export module DateUtils {
         }
     }
 
-    type timestep = {
+    type TimeStep = {
         [key: string]: number
     }
 }

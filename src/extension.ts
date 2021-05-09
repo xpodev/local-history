@@ -13,8 +13,8 @@ import { LHWorkspaceFolderProvider, LH_WORKSPACES } from './workspace-folder-pro
 // CR Neriya: Fixed.
 
 const TEMP_SCHEME = "temp";
-const fileTimeDelay: {[key:string]: number} = {
-	
+const fileTimeDelay: { [key: string]: number } = {
+
 };
 
 // CR Elazar: I think it should be implement with some "IgnoreProvider" of some sort. see https://www.npmjs.com/package/ignore
@@ -26,8 +26,8 @@ const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
 	if (workspaceFolderId == undefined) {
 		return;
 	} else {
-		const relativePath = vscode.workspace.asRelativePath(filePath); 
-		if(fileTimeDelay[relativePath]) {
+		const relativePath = vscode.workspace.asRelativePath(filePath);
+		if (fileTimeDelay[relativePath]) {
 			if ((Date.now() - fileTimeDelay[relativePath]) < (vscode.workspace.getConfiguration("local-history").get<number>("commits.patchDelay")! * 1000)) {
 				return;
 			}

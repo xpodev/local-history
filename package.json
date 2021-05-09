@@ -27,7 +27,7 @@
 					"default": "true",
 					"description": "Checked - descending\nNot checked - ascending"
 				},
-				"local-history.commits.clearPatches": {
+				"local-history.commits.clearPatchesOnNewCommit": {
 					"type": "boolean",
 					"default": true,
 					"description": "Clear all previous patches after creating commit"
@@ -102,9 +102,14 @@
 				"title": "Delete"
 			},
 			{
-				"command": "local-history.diff-browser.change-order",
+				"command": "local-history.diff-browser.order-ascending",
 				"title": "Diff Browser: Change Order",
 				"icon": "$(arrow-up)"
+			},
+			{
+				"command": "local-history.diff-browser.order-descending",
+				"title": "Diff Browser: Change Order",
+				"icon": "$(arrow-down)"
 			}
 		],
 		"viewsContainers": {
@@ -112,7 +117,7 @@
 				{
 					"id": "local-history",
 					"title": "Local History",
-					"icon": "media/lh-logo.svg"
+					"icon": "$(timeline-open)"
 				}
 			]
 		},
@@ -121,13 +126,11 @@
 				{
 					"id": "localHistoryFileBrowser",
 					"name": "Files",
-					"icon": "media/lh-logo.svg",
 					"contextualTitle": "Local History"
 				},
 				{
 					"id": "localHistoryDiffBrowser",
 					"name": "Diffs",
-					"icon": "media/lh-logo.svg",
 					"contextualTitle": "Local History"
 				}
 			]
@@ -185,8 +188,13 @@
 					"group": "navigation"
 				},
 				{
-					"command": "local-history.diff-browser.change-order",
-					"when": "view == localHistoryDiffBrowser",
+					"command": "local-history.diff-browser.order-descending",
+					"when": "view == localHistoryDiffBrowser && config.local-history.browser.descending",
+					"group": "navigation"
+				},
+				{
+					"command": "local-history.diff-browser.order-ascending",
+					"when": "view == localHistoryDiffBrowser && !config.local-history.browser.descending",
 					"group": "navigation"
 				}
 			],

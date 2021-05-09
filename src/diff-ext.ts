@@ -101,7 +101,7 @@ export class DiffExt {
 
         // Elazar thinks it's better like that
         createdCommit.newPatch(NULL_PATCH);
-        const deletePatches = vscode.workspace.getConfiguration("local-history").get<boolean>("commits.clearPatches");
+        const deletePatches = vscode.workspace.getConfiguration("local-history").get<boolean>("commits.clearPatchesOnNewCommit");
         if (deletePatches) {
             this.commits.forEach((commit) => {
                 commit.patches = [];
@@ -130,8 +130,9 @@ export class DiffExt {
     }
 
     getDiffPath() {
-        const relativeFilePath = vscode.workspace.asRelativePath(this.sourceFile);
-        return vscode.Uri.joinPath(this.lhFolder, `${relativeFilePath}.json`);
+        const relativeFilePath = vscode.workspace.asRelativePath(this.sourceFile).split("/");
+        relativeFilePath.shift();
+        return vscode.Uri.joinPath(this.lhFolder, `${relativeFilePath.join("/")}.json`);
     }
 
     getPatched(index: number, commitIndex?: number): string {
@@ -158,6 +159,7 @@ export class DiffExt {
     async restoreCommit(index: number) {
         await FileSystemUtils.writeFile(this.sourceFile, this.getCommit(index));
         this.activeCommitIndex = index;
+        await this.save();
     }
 
     async restorePatch(index: number, commitIndex?: number) {

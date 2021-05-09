@@ -195,8 +195,6 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
     private _descending: boolean = true;
     private _currentFile!: vscode.Uri;
 
-    private static descending: boolean = true;
-
     // Change from Commit/Patched to all commits.
     async refresh(): Promise<void> {
         if (this._currentFile) {
