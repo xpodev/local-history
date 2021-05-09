@@ -13,7 +13,9 @@ import { LHWorkspaceFolderProvider, LH_WORKSPACES } from './workspace-folder-pro
 // CR Neriya: Fixed.
 
 const TEMP_SCHEME = "temp";
-let timeDelay = Date.now();
+const fileTimeDelay: {[key:string]: number} = {
+	
+};
 
 // CR Elazar: I think it should be implement with some "IgnoreProvider" of some sort. see https://www.npmjs.com/package/ignore
 // CR Neriya: For now it's good. I don't really want to add more modules into this extension.
@@ -24,15 +26,18 @@ const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
 	if (workspaceFolderId == undefined) {
 		return;
 	} else {
-		if ((Date.now() - timeDelay) < vscode.workspace.getConfiguration("local-history").get<number>("commits.patchDelay")!) {
-			return;
+		const relativePath = vscode.workspace.asRelativePath(filePath); 
+		if(fileTimeDelay[relativePath]) {
+			if ((Date.now() - fileTimeDelay[relativePath]) < (vscode.workspace.getConfiguration("local-history").get<number>("commits.patchDelay")! * 1000)) {
+				return;
+			}
 		}
 		if (await LH_WORKSPACES[workspaceFolderId].isIgnored(filePath)) {
 			return;
 		} else {
 			let diskData = await FileSystemUtils.readFile(saveEvent.document.uri)
 			await createDiff(saveEvent.document, diskData);
-			timeDelay = Date.now();
+			fileTimeDelay[relativePath] = Date.now();
 		}
 	}
 });
