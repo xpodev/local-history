@@ -8,17 +8,11 @@ import { DiffExt } from './diff-ext';
 import tempFileProvider from './temp-provider';
 import { LHWorkspaceFolderProvider, LH_WORKSPACES } from './workspace-folder-provider';
 
-// CR Elazar: now that I got to the end of the file, I think we should address it properly:
-// 		in vscode you can have multiple folders opened in the same workspace.
-// CR Neriya: Fixed.
 
 const TEMP_SCHEME = "temp";
 const fileTimeDelay: { [key: string]: number } = {
 
 };
-
-// CR Elazar: I think it should be implement with some "IgnoreProvider" of some sort. see https://www.npmjs.com/package/ignore
-// CR Neriya: For now it's good. I don't really want to add more modules into this extension.
 
 const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
 	const filePath = saveEvent.document.uri;
@@ -76,10 +70,6 @@ export async function restoreCommit(filePath: vscode.Uri, index: number): Promis
 export async function createCommit(filePath?: vscode.Uri) {
 	let newData;
 	if (!filePath) {
-		// CR Elazar: is vscode.window.activeTextEditor never `undefined`?
-		// CR Neriya: same comment for createPatch
-		// CR Elazar: so same answer. disable the command, depends on the state. you can leave the 
-		//		code here as is, just in case 
 		if (vscode.window.activeTextEditor) {
 			filePath = vscode.window.activeTextEditor.document.uri;
 			newData = vscode.window.activeTextEditor.document.getText();
@@ -110,17 +100,6 @@ export async function createCommit(filePath?: vscode.Uri) {
 }
 
 async function init(): Promise<void> {
-	// CR Elazar: you should verify vscode is opened inside a folder. e.g. by:
-	// 	if (vscode.workspace.workspaceFolders) {
-	// CR Neriya: Actually, you can track file even if vscode is open as text editor.
-	// CR Elazar: and where it's going to be saved, the history json files?
-
-	// CR Elazar: I think you can safely remove this if. either way we  
-	// CR Neriya: what?
-	// CR Elazar: forgot to finish the sentence... won't it work to simply createDirectory?
-	//		the documentation hints it would not be a problem if it's already exists.
-	//		if so, you can trim this function into 3 lines.  
-
 	await loadWorkspaceFolders();
 }
 

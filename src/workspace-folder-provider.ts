@@ -23,12 +23,9 @@ export class LHWorkspaceFolderProvider {
             if (!(await FileSystemUtils.fileExists(this.lhDir))) {
                 await vscode.workspace.fs.createDirectory(this.lhDir);
             }
-            // CR Elazar: I think you shouldn't add ".lh/*" to this file. I think it should be ignored by default.
-            // CR Neriya: And if someone wants to add diffs to the lh folder?
-            // CR Elazar: you may drown him
             await FileSystemUtils.writeFile(this.ignoreFile,
                 `# list file to not track by the local-history extension. comment line starts with a '#' character
-# each line describe a regular expression pattern (link to regular expression explanation on the web)
+# each line describe a regular expression pattern (search for "Javascript regex")
 # it will relate to the workspace directory root. for example:
 # ".*\\.txt" ignores any file with "txt" extension
 # "/test/.*" ignores all the files under the "test" directory
