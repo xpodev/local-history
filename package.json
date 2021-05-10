@@ -70,7 +70,8 @@
 			},
 			{
 				"command": "local-history.create-commit",
-				"title": "Local History: Create Commit"
+				"title": "Local History: Create Commit",
+				"when": "editorTextFocus"
 			},
 			{
 				"command": "local-history.refresh-file-browser",
@@ -153,8 +154,7 @@
 				},
 				{
 					"command": "local-history.create-commit",
-					"title": "Local History: Create Commit",
-					"when": "editorTextFocus"
+					"title": "Local History: Create Commit"
 				},
 				{
 					"command": "local-history.diff-browser.open-source",
