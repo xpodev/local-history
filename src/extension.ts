@@ -2,322 +2,137 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import * as Diff from 'diff';
-import * as utils from './utilities';
-import { initGUI } from './gui';
-import { EOL } from 'os';
+import { DateUtils, FileSystemUtils } from './utilities';
+import { initGUI, diffNodeProvider } from './gui';
+import { DiffExt } from './diff-ext';
+import tempFileProvider from './temp-provider';
+import { LHWorkspaceFolderProvider, LH_WORKSPACES } from './workspace-folder-provider';
 
-export const ROOT_DIR = vscode.workspace.workspaceFolders?.length ? vscode.workspace.workspaceFolders[0].uri : parentFolder(vscode.workspace.textDocuments[0].uri);
-export const LH_DIR = vscode.Uri.joinPath(ROOT_DIR, '.lh');
-export const TEMP_DIR = vscode.Uri.joinPath(LH_DIR, '__temp__');
-const LH_IGNORE_FILE = vscode.Uri.joinPath(LH_DIR, '.lhignore');
-const NULL_PATCH = Diff.createPatch('', '', '');
-let lh_ignore: string[] = [];
 
-export enum DiffType {
-	Commit,
-	Patch
-}
+const TEMP_SCHEME = "temp";
+const fileTimeDelay: { [key: string]: number } = {
 
-const config = {
-	dateFormat: "dd-MM-yy"
-}
+};
 
-const onSave = vscode.workspace.onWillSaveTextDocument(async (document) => {
-	const diskData = (await vscode.workspace.fs.readFile(document.document.uri)).toString();
-	await createDiff(document, diskData);
+const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
+	const filePath = saveEvent.document.uri;
+	const workspaceFolderId = vscode.workspace.getWorkspaceFolder(filePath)!.index;
+	const relativePath = vscode.workspace.asRelativePath(filePath);
+	if (fileTimeDelay[relativePath]) {
+		if ((Date.now() - fileTimeDelay[relativePath]) < (vscode.workspace.getConfiguration("local-history").get<number>("commits.patchDelay")! * 1000)) {
+			return;
+		}
+	}
+	if (await LH_WORKSPACES[workspaceFolderId].isIgnored(filePath) || !LH_WORKSPACES[workspaceFolderId].enabled) {
+		return;
+	} else {
+		let diskData = await FileSystemUtils.readFile(saveEvent.document.uri)
+		await createDiff(saveEvent.document, diskData);
+		fileTimeDelay[relativePath] = Date.now();
+	}
 });
 
-async function createDiff(document: vscode.TextDocumentWillSaveEvent, diskData: string): Promise<void> {
-	const filePath = document.document.uri;
-	if (filePath.path === LH_IGNORE_FILE.path) {
-		await loadIgnoreFile();
-	}
-	if (isIgnored(filePath)) {
-		return;
-	}
-	const newData = document.document.getText();
-	let fileDiff = await loadFileDiff(filePath);
-	if (fileDiff) {
-		if (fileDiff.commits.length < 1) {
-			newCommit(fileDiff, newData);
-		} else {
-			const lastCommit = fileDiff.commits[fileDiff.activeCommit].content;
-			if (newData !== diskData || newData !== lastCommit) {
-				const patch = Diff.createPatch('', newData !== diskData ? diskData : lastCommit, newData);
-				newPatch(fileDiff, patch);
-			}
+async function createDiff(document: vscode.TextDocument, diskData: string): Promise<void> {
+	const filePath = document.uri;
+	const newData = document.getText();
+	const fileDiff = await DiffExt.load(filePath);
+	if (fileDiff.commits.length > 0) {
+		const activeCommit = fileDiff.activeCommit;
+		const lastPatch = fileDiff.getPatched(activeCommit.activePatchIndex);
+		// Dear future Me, this is for when the user is changing document outside of
+		// 		VS Code. If it'll check against the disk data it'll break the patches.
+		// 		Hope you'll understand.
+		const oldData = newData !== diskData ? diskData : lastPatch;
+		if (newData !== oldData) {
+			const patch = Diff.createPatch('', oldData, newData);
+			activeCommit.newPatch(patch);
 		}
 	} else {
-		fileDiff = newDiff(filePath);
-		newCommit(fileDiff, newData);
-		await writeFile(diffPathOf(filePath), JSON.stringify(fileDiff, null, 4));
+		fileDiff.newCommit(newData);
 	}
-	await saveFileDiff(filePath, fileDiff!);
+	await fileDiff.save();
 }
 
-function newPatch(fileDiff: diff, data: string): void {
-	if (fileDiff.activePatch <= fileDiff.patches.length) {
-		fileDiff.patches = fileDiff.patches.slice(0, fileDiff.activePatch + 1);
-	}
-	const patchDate = new Date();
-	const patch: patch = {
-		date: patchDate.toLocaleString(),
-		content: data
-	}
-	fileDiff.patches.push(patch);
-	fileDiff.activePatch = fileDiff.patches.length - 1;
+export async function restorePatch(filePath: vscode.Uri, index: number): Promise<void> {
+	const fileDiff = await DiffExt.load(filePath);
+	fileDiff.restorePatch(index);
 }
 
-function newCommit(fileDiff: diff, data: string | commit, name?: string): void {
-	const commitDate = new Date();
-	let createdCommit: commit;
-	if (typeof data == 'string') {
-		createdCommit = {
-			name: name ? name : `Commit-${fileDiff.commits.length}`,
-			date: commitDate.toLocaleString(),
-			content: data
-		}
-	} else {
-		createdCommit = data;
-	}
-	fileDiff.commits.push(createdCommit as commit);
-	fileDiff.activeCommit = fileDiff.commits.length - 1;
-	fileDiff.activePatch = 0;
-	fileDiff.patches = [];
-
-	// Elazar think it's better like that
-	newPatch(fileDiff, NULL_PATCH);
-}
-
-function newDiff(filePath: vscode.Uri): diff {
-	return {
-		sourceFile: vscode.workspace.asRelativePath(filePath),
-		activeCommit: 0,
-		activePatch: 0,
-		commits: [],
-		patches: []
-	};
-}
-
-function diffPathOf(filePath: vscode.Uri): vscode.Uri {
-	const relativeFilePath = vscode.workspace.asRelativePath(filePath);
-	return vscode.Uri.joinPath(LH_DIR, `${relativeFilePath}.json`);
-}
-
-export function tempFileOf(filePath: vscode.Uri): vscode.Uri {
-	return vscode.Uri.joinPath(TEMP_DIR, `tmp-${vscode.workspace.asRelativePath(filePath)}`);
-}
-
-export function sourceFileOf(fileDiff: diff): vscode.Uri {
-	return vscode.Uri.joinPath(ROOT_DIR, fileDiff.sourceFile);
-}
-
-export async function loadFileDiff(filePath: vscode.Uri): Promise<diff | undefined> {
-	const diffPath = diffPathOf(filePath);
-	try {
-		if (await fileExists(diffPath)) {
-			return JSON.parse((await vscode.workspace.fs.readFile(diffPath)).toString());
-		} else {
-			return undefined;
-		}
-	} catch (err) {
-		return undefined;
-	}
-}
-
-async function saveFileDiff(filePath: vscode.Uri, fileDiff: diff): Promise<void> {
-	const diffPath = diffPathOf(filePath);
-	await vscode.workspace.fs.writeFile(diffPath, utils.encode(JSON.stringify(fileDiff, null, 4)));
-}
-
-async function loadIgnoreFile(): Promise<void> {
-	lh_ignore = (await vscode.workspace.fs.readFile(LH_IGNORE_FILE)).toString().split(EOL).filter(Boolean);
-}
-
-function isIgnored(filePath: vscode.Uri): boolean {
-	const a = lh_ignore.filter(function (pattern) {
-		return new RegExp(pattern).test(vscode.workspace.asRelativePath(filePath));
-	}).length > 0;
-	return a;
-}
-
-async function restorePatch(): Promise<void> {
-	// Display a message box to the user
-	const filePath = vscode.window.activeTextEditor!.document.uri;
-	let patchIndex: any = await vscode.window.showInputBox({
-		prompt: "Enter patch index (start from 0)"
-	});
-	patchIndex = parseInt(patchIndex);
-	await restorePatchA(filePath, patchIndex);
-}
-
-export async function restorePatchA(filePath: vscode.Uri, patchIndex: number): Promise<void> {
-	const fileDiff = await loadFileDiff(filePath);
-	if (fileDiff) {
-		const patched = await getPatched(fileDiff, patchIndex);
-		await vscode.workspace.fs.writeFile(filePath, utils.encode(patched));
-		fileDiff.activePatch = patchIndex;
-		await saveFileDiff(filePath, fileDiff!);
-	} else {
-		vscode.window.showErrorMessage(`Diff info not found on file "${filePath}"`);
-	}
-}
-
-export async function getCommit(fileDiff: diff, commitIndex: number): Promise<string> {
-	if (commitIndex != 0) {
-		if (!commitIndex || commitIndex > fileDiff.patches.length) {
-			commitIndex = fileDiff.activeCommit;
-		}
-	}
-	if (commitIndex < 0) {
-		commitIndex = 0;
-	}
-	return fileDiff.commits[commitIndex].content;
-}
-
-export async function getPatched(fileDiff: diff, patchIndex: number): Promise<string | undefined> {
-	if (patchIndex != 0) {
-		if (!patchIndex || patchIndex > fileDiff.patches.length) {
-			patchIndex = fileDiff.patches.length;
-		}
-	}
-	if (patchIndex < 0) {
-		return fileDiff.commits[fileDiff.activeCommit].content;
-	}
-	let patched = fileDiff.commits[fileDiff.activeCommit].content;
-	for (let i = 0; i <= patchIndex; i++) {
-		const patchString = fileDiff.patches[i].content;
-		const uniDiff = Diff.parsePatch(patchString);
-		patched = Diff.applyPatch(patched, uniDiff[0]);
-	}
-	return patched;
-}
-
-async function restoreCommit(): Promise<void> {
-	// Display a message box to the user
-	const filePath = vscode.window.activeTextEditor!.document.uri;
-	let commitId: any = await vscode.window.showInputBox({
-		prompt: "Enter commit index (starts from 0)"
-	});
-	commitId = parseInt(commitId);
-	await restoreCommitA(filePath, commitId);
-}
-
-export async function restoreCommitA(filePath: vscode.Uri, commitIndex: number): Promise<void> {
-	const fileDiff = await loadFileDiff(filePath);
-	if (fileDiff) {
-		const commited = await getCommit(fileDiff, commitIndex);
-		await vscode.workspace.fs.writeFile(filePath, utils.encode(commited));
-		fileDiff.activeCommit = commitIndex;
-		await saveFileDiff(filePath, fileDiff);
-	} else {
-		vscode.window.showErrorMessage(`Diff info not found on file "${filePath}"`);
-	}
+export async function restoreCommit(filePath: vscode.Uri, index: number): Promise<void> {
+	const fileDiff = await DiffExt.load(filePath);
+	fileDiff.restoreCommit(index);
 }
 
 export async function createCommit(filePath?: vscode.Uri) {
 	let newData;
 	if (!filePath) {
-		filePath = vscode.window.activeTextEditor!.document.uri;
-		newData = vscode.window.activeTextEditor!.document.getText();
+		if (vscode.window.activeTextEditor) {
+			filePath = vscode.window.activeTextEditor.document.uri;
+			newData = vscode.window.activeTextEditor.document.getText();
+		} else {
+			return;
+		}
 	} else {
 		newData = (await vscode.workspace.fs.readFile(filePath)).toString();
 	}
-	let fileDiff = await loadFileDiff(filePath);
+	const fileDiff = await DiffExt.load(filePath);
+	const commitDate = new DateUtils.DateExt();
+	const commitDefaultName = `Commit${fileDiff ? fileDiff.commits.length : 1}-${commitDate.format()}`;
 	let commitName = await vscode.window.showInputBox({
-		prompt: "Enter commit name (default ID-DATE)"
+		prompt: "Enter commit name",
+		value: commitDefaultName,
 	});
-	const commitDate = new Date();
-	if (!commitName) {
-		commitName = `Commit${fileDiff ? fileDiff.commits.length : 1}-${utils.formatDate(commitDate, config.dateFormat)}`;
-	}
-	const createdCommit: commit = {
-		name: commitName,
-		date: commitDate.toLocaleString(),
-		content: newData
-	}
-	if (fileDiff) {
-		newCommit(fileDiff, newData);
-		saveFileDiff(filePath, fileDiff);
-	} else {
-		createDiffFile(filePath, createdCommit);
-	}
-}
 
-function createDiffFile(filePath: vscode.Uri, initCommit?: commit) {
-	const fileDiff = newDiff(filePath);
-	if (initCommit) {
-		newCommit(fileDiff, initCommit);
+	// Removing space at the beginning and the end of the string.
+	commitName = commitName?.replace(/^\s*/, "").replace(/\s*$/, "");
+
+	if (!commitName) {
+		return;
 	}
-	writeFile(diffPathOf(filePath), JSON.stringify(fileDiff, null, 4));
+
+	fileDiff.newCommit(newData, commitName);
+	await fileDiff.save();
+	await diffNodeProvider.refresh();
 }
 
 async function init(): Promise<void> {
-	if (await fileExists(LH_IGNORE_FILE)) {
-		return;
-	} else {
-		if (!(await fileExists(LH_DIR))) {
-			await vscode.workspace.fs.createDirectory(LH_DIR);
+	await loadWorkspaceFolders();
+}
+
+async function loadWorkspaceFolders() {
+	// Reset the array
+	LH_WORKSPACES.length = 0;
+	if (vscode.workspace.workspaceFolders) {
+		for (const folder of vscode.workspace.workspaceFolders) {
+			const enabled = vscode.workspace.getConfiguration('local-history', folder).get<boolean>('enable');
+			const workspaceFolder = new LHWorkspaceFolderProvider(folder, enabled);
+			if (enabled) {
+				await workspaceFolder.init();
+			}
+			LH_WORKSPACES.push(workspaceFolder);
 		}
-		if (!(await fileExists(TEMP_DIR))) {
-			await vscode.workspace.fs.createDirectory(TEMP_DIR);
-		}
-		await vscode.workspace.fs.writeFile(LH_IGNORE_FILE, utils.encode(`.lh/*${EOL}`));
 	}
 }
 
-export async function writeFile(filePath: vscode.Uri, data: string) {
-	if (!(await fileExists(filePath))) {
-		await vscode.workspace.fs.createDirectory(parentFolder(filePath));
-	}
-	await vscode.workspace.fs.writeFile(filePath, utils.encode(data));
-}
-
-export async function fileExists(filePath: vscode.Uri): Promise<boolean> {
-	try {
-		const f = await vscode.workspace.fs.stat(filePath);
-	} catch {
-		return false;
-	}
-	return true;
-}
-
-function parentFolder(uriPath: vscode.Uri): vscode.Uri {
-	return vscode.Uri.joinPath(uriPath, '..');
-}
-
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
-	await init();
-	await loadIgnoreFile();
-	initGUI();
-	let restorePatchCmd = vscode.commands.registerCommand('local-history.restore-patch', restorePatch);
-	let restoreCommitCmd = vscode.commands.registerCommand('local-history.restore-commit', restoreCommit);
-	let createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', createCommit);
-	context.subscriptions.push(createCommitCmd, restorePatchCmd, restoreCommitCmd);
-	context.subscriptions.push(onSave);
+	if (vscode.workspace.getConfiguration('local-history').get<boolean>('enable')) {
+		await init();
+		initGUI();
+
+		vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
+
+		const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {
+			await createCommit();
+		});
+
+		vscode.workspace.onDidChangeWorkspaceFolders(async () => {
+			await loadWorkspaceFolders();
+		});
+
+		context.subscriptions.push(createCommitCmd);
+		context.subscriptions.push(onSave);
+	}
 }
 
 // this method is called when your extension is deactivated
 export function deactivate() { }
-
-export type diff = {
-	sourceFile: string,
-	activeCommit: number,
-	activePatch: number,
-	commits: commit[],
-	patches: patch[]
-}
-
-export type commit = {
-	name: string,
-	content: string,
-	date: string
-}
-
-export type patch = {
-	content: string,
-	date: string
-}
-

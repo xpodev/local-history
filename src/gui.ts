@@ -1,44 +1,53 @@
+import { DiffExt, DiffType } from './diff-ext';
 import * as vscode from 'vscode';
-import * as lh from './extension';
-import * as path from 'path';
+import { DateUtils, FileSystemUtils } from './utilities';
+import { isLHDir, LH_WORKSPACES } from './workspace-folder-provider';
+import tempFileProvider from './temp-provider';
 
-
-class DiffBrowserItem extends vscode.TreeItem {
-
+class DiffItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly diff: DiffExt,
+        public readonly index: number,
+        public readonly type: DiffType,
         public readonly command?: vscode.Command
     ) {
         super(label, collapsibleState);
-        if (this.collapsibleState == vscode.TreeItemCollapsibleState.None) {
-            this.isFolder = false;
-        } else {
-            this.isFolder = true;
-        }
     }
-
-    public readonly isFolder;
 }
 
-class DiffItem extends DiffBrowserItem {
+class CommitItem extends DiffItem {
     constructor(
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly diff: lh.diff,
+        public readonly diff: DiffExt,
         public readonly index: number,
-        public readonly type: lh.DiffType,
         public readonly command?: vscode.Command
     ) {
-        super(label, collapsibleState, command);
-        if (this.type == lh.DiffType.Commit) {
-            this.description = this.diff.commits[index].date;
-        } else if (this.type == lh.DiffType.Patch) {
-            this.description = this.diff.patches[index].date;
-        }
+        super(label, collapsibleState, diff, index, DiffType.Commit);
+        const date = new DateUtils.DateExt(this.diff.commits[index].date);
+        this.description = date.represent();
     }
 
-    contextValue = 'browserDiffItem';
+    contextValue = "commitDiffItem";
+}
+
+class PatchItem extends DiffItem {
+    constructor(
+        public readonly label: string,
+        public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+        public readonly diff: DiffExt,
+        public readonly index: number,
+        public readonly commitIndex: number,
+        public readonly command?: vscode.Command
+    ) {
+        super(label, collapsibleState, diff, index, DiffType.Patch);
+        const date = new DateUtils.DateExt(this.diff.commits[commitIndex].patches[index].date);
+        this.description = date.represent();
+    }
+
+    contextValue = "patchDiffItem";
 }
 
 class OpenCommitCmd implements vscode.Command {
@@ -104,37 +113,59 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
         return element;
     }
 
-    getChildren(element?: PathItem): vscode.ProviderResult<PathItem[]> {
-        return Promise.resolve(this.scanFolder(element ? element.resourceUri : lh.ROOT_DIR));
+    async getChildren(element?: PathItem): Promise<PathItem[] | null | undefined> {
+        const rootFolders: PathItem[] = [];
+        if (element) {
+            return Promise.resolve(this.scanFolder(element.resourceUri));
+        } else {
+            for (const folder of LH_WORKSPACES) {
+                if (await FileSystemUtils.fileExists(vscode.Uri.joinPath(folder.rootDir.uri, '.lh'))) {
+                    rootFolders.push(
+                        new PathItem(
+                            folder.rootDir.name,
+                            vscode.TreeItemCollapsibleState.Collapsed,
+                            folder.rootDir.uri
+                        )
+                    );
+                }
+            }
+            return rootFolders;
+        }
     }
 
     async scanFolder(folderPath: vscode.Uri): Promise<PathItem[]> {
-        const f = await vscode.workspace.fs.readDirectory(folderPath);
+        const folderContent = await vscode.workspace.fs.readDirectory(folderPath);
         const folders: PathItem[] = [];
         const files: PathItem[] = [];
-        f.forEach((value) => {
-            if (vscode.Uri.joinPath(folderPath, value[0]).path === lh.LH_DIR.path) {
+        folderContent.forEach(([fileName, fileType]) => {
+            if (isLHDir(vscode.Uri.joinPath(folderPath, fileName))) {
                 return;
             }
-            let collapsibleState;
-            const itemPath = vscode.Uri.joinPath(folderPath, value[0]);
-            switch (value[1]) {
+            const itemPath = vscode.Uri.joinPath(folderPath, fileName);
+            switch (fileType) {
                 case vscode.FileType.File:
-                    collapsibleState = vscode.TreeItemCollapsibleState.None;
-                    files.push(new PathItem(value[0], collapsibleState, itemPath, new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [itemPath])));
+                    files.push(
+                        new PathItem(
+                            fileName,
+                            vscode.TreeItemCollapsibleState.None,
+                            itemPath,
+                            new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [itemPath])
+                        ));
                     break;
                 case vscode.FileType.Directory:
-                    collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-                    folders.push(new PathItem(value[0], collapsibleState, itemPath, new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [itemPath])));
+                    folders.push(
+                        new PathItem(
+                            fileName,
+                            vscode.TreeItemCollapsibleState.Collapsed,
+                            itemPath
+                        ));
                     break;
                 default:
                     return;
             }
-
         });
         return folders.concat(files);
     }
-
 }
 
 class PathItem extends vscode.TreeItem {
@@ -151,131 +182,197 @@ class PathItem extends vscode.TreeItem {
     contextValue = 'browserPathItem';
 }
 
-class DiffNodeProvider implements vscode.TreeDataProvider<DiffBrowserItem> {
+class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
     constructor() {
 
     }
 
-    private _onDidChangeTreeData: vscode.EventEmitter<DiffBrowserItem | undefined | void> = new vscode.EventEmitter<DiffBrowserItem | undefined | void>();
-    readonly onDidChangeTreeData: vscode.Event<DiffBrowserItem | undefined | void> = this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: vscode.EventEmitter<DiffItem | undefined | void> = new vscode.EventEmitter<DiffItem | undefined | void>();
+    readonly onDidChangeTreeData: vscode.Event<DiffItem | undefined | void> = this._onDidChangeTreeData.event;
 
-    private currentCommits: DiffBrowserItem[] = [];
-    private currentPatches: DiffBrowserItem[] = [];
-    private readonly rootDirectories: DiffBrowserItem[] = [new DiffBrowserItem('Commits', vscode.TreeItemCollapsibleState.Collapsed), new DiffBrowserItem('Patches', vscode.TreeItemCollapsibleState.Collapsed)];
+    private currentCommits: CommitItem[] = [];
 
-    refresh(): void {
+    private _descending: boolean = true;
+    private _currentFile!: vscode.Uri;
+
+    // Change from Commit/Patched to all commits.
+    async refresh(): Promise<void> {
+        if (this._currentFile) {
+            await this.loadCommits();
+        }
         this._onDidChangeTreeData.fire(undefined);
     }
 
-    getTreeItem(element: DiffBrowserItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
+    getTreeItem(element: DiffItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
         return element;
     }
 
-    getChildren(element?: DiffBrowserItem): vscode.ProviderResult<DiffBrowserItem[]> {
+    async getChildren(element?: DiffItem): Promise<DiffItem[] | null | undefined> {
         if (element) {
-            if (element.label == "Commits") {
-                return Promise.resolve(this.currentCommits);
-            } else if (element.label == "Patches") {
-                return Promise.resolve(this.currentPatches);
+            return Promise.resolve(this.loadPatches(element.diff, element.index));
+        } else if (this._currentFile) {
+            await this.loadCommits();
+            return Promise.resolve(this.currentCommits);
+        }
+    }
+
+    loadPatches(fileDiff: DiffExt, commitIndex: number): DiffItem[] {
+        let commitPatches: PatchItem[] = [];
+        fileDiff.commits[commitIndex].patches.forEach((value, patchIndex) => {
+            const onOpenPatch = new OpenPatchCmd("Local History: Open Patch", "local-history.diff-browser.open-patch", [fileDiff, patchIndex, commitIndex])
+            commitPatches.push(new PatchItem(`patch-${patchIndex}`, vscode.TreeItemCollapsibleState.None, fileDiff, patchIndex, commitIndex, onOpenPatch));
+        });
+        if (this._descending) {
+            commitPatches = commitPatches.reverse();
+        }
+        return commitPatches;
+    }
+
+    async loadCommits() {
+        this.currentCommits = [];
+        const fileDiff = await DiffExt.load(this._currentFile);
+        if (fileDiff.commits.length > 0) {
+            fileDiff.commits.forEach((commit, index) => {
+                const onOpenCommit = new OpenCommitCmd("Local History: Open Commit", "local-history.diff-browser.open-commit", [fileDiff, index]);
+                if (commit.patches.length > 0) {
+                    this.currentCommits.push(new CommitItem(fileDiff.commits[index].name, vscode.TreeItemCollapsibleState.Collapsed, fileDiff, index));
+                } else {
+                    this.currentCommits.push(new CommitItem(fileDiff.commits[index].name, vscode.TreeItemCollapsibleState.None, fileDiff, index, onOpenCommit));
+                }
+            });
+            if (this._descending) {
+                this.currentCommits = this.currentCommits.reverse();
             }
-        } else {
-            return this.rootDirectories;
         }
     }
 
     async selectFile(filePath: vscode.Uri) {
-        this.currentCommits = [];
-        this.currentPatches = [];
-        const fileDiff = await lh.loadFileDiff(filePath);
-        if (fileDiff) {
-            fileDiff.commits.forEach((value, index) => {
-                const onOpenCommit = new OpenCommitCmd("Local History: Open Commit", "local-history.diff-browser.open-commit", [fileDiff, index])
-                this.currentCommits.unshift(new DiffItem(fileDiff.commits[index].name, vscode.TreeItemCollapsibleState.None, fileDiff, index, lh.DiffType.Commit, onOpenCommit));
-            });
-            fileDiff.patches.forEach((value, index) => {
-                const onOpenPatch = new OpenPatchCmd("Local History: Open Patch", "local-history.diff-browser.open-patch", [fileDiff, index])
-                this.currentPatches.unshift(new DiffItem(`patch-${index + 1}`, vscode.TreeItemCollapsibleState.None, fileDiff, index, lh.DiffType.Patch, onOpenPatch));
-            });
-        }
-        this.refresh();
+        this._currentFile = filePath;
+        await this.refresh();
     }
 
-    clearDiff() {
-        this.currentPatches = [];
-        this.refresh();
+    async toggleOrder() {
+        this._descending = !this._descending;
+        const config = vscode.workspace.getConfiguration("local-history");
+        await config.update("browser.descending", this._descending);
+        await this.refresh();
     }
-
 }
+
 
 const browserNodeProvider = new BrowserNodeProvider();
-const diffNodeProvider = new DiffNodeProvider();
+export const diffNodeProvider = new DiffNodeProvider();
 
-async function openCommit(fileDiff: lh.diff, commitIndex: number) {
-    const sourceFile = lh.sourceFileOf(fileDiff);
-    const tempFile = lh.tempFileOf(sourceFile);
-    await lh.writeFile(tempFile, await lh.getCommit(fileDiff, commitIndex));
-    vscode.commands.executeCommand("vscode.diff", sourceFile, tempFile);
+async function openCommit(fileDiff: DiffExt, index: number) {
+    const sourceFile = fileDiff.sourceFile;
+    const tempFile = fileDiff.tempURI(index, 0);
+    vscode.commands.executeCommand(
+        "vscode.diff",
+        sourceFile,
+        tempFile,
+        `${FileSystemUtils.filename(sourceFile)} \u2B0C ${fileDiff.commits[index].name}`
+    );
+    tempFileProvider.refresh();
 }
 
-async function openPatch(fileDiff: lh.diff, patchIndex: number) {
-    const sourceFile = lh.sourceFileOf(fileDiff);
-    const patched = await lh.getPatched(fileDiff, patchIndex);
-    if (patched) {
-        const tempFile = lh.tempFileOf(sourceFile);
-        await lh.writeFile(tempFile, patched);
-        vscode.commands.executeCommand("vscode.diff", sourceFile, tempFile);
+async function openPatch(fileDiff: DiffExt, patchIndex: number, commitIndex: number) {
+    const sourceFile = fileDiff.sourceFile;
+    const patched = fileDiff.getPatched(patchIndex, commitIndex);
+    if (patched || patched === '') {
+        const tempFile = fileDiff.tempURI(commitIndex, patchIndex);
+        const formattedDate = new DateUtils.DateExt(fileDiff.commits[commitIndex].patches[patchIndex].date).represent();
+        vscode.commands.executeCommand(
+            "vscode.diff",
+            sourceFile,
+            tempFile,
+            `${FileSystemUtils.filename(sourceFile)} \u2B0C patch-${patchIndex} ${formattedDate}`
+        );
     }
+    tempFileProvider.refresh();
 }
 
 async function restoreCommit(selectedItem: DiffItem) {
-    lh.restoreCommitA(lh.sourceFileOf(selectedItem.diff), selectedItem.index);
+    selectedItem.diff.restoreCommit(selectedItem.index);
 }
 
 async function restorePatch(selectedItem: DiffItem) {
-    lh.restorePatchA(lh.sourceFileOf(selectedItem.diff), selectedItem.index);
+    selectedItem.diff.restorePatch(selectedItem.index);
+}
+
+async function renameCommit(selectedItem: DiffItem) {
+    let commitName = await vscode.window.showInputBox({
+        prompt: "Enter commit name",
+        value: selectedItem.diff.commits[selectedItem.index].name,
+    });
+
+    // Removing space at the beginning and the end of the string.
+    commitName = commitName?.replace(/^\s*/, "").replace(/\s*$/, "");
+
+    if (!commitName) {
+        return;
+    }
+    selectedItem.diff.renameCommit(selectedItem.index, commitName);
+    await diffNodeProvider.refresh();
+}
+
+async function deleteCommit(selectedItem: DiffItem) {
+    await selectedItem.diff.deleteCommit(selectedItem.index);
+    await diffNodeProvider.refresh();
 }
 
 export function initGUI() {
     vscode.window.registerTreeDataProvider('localHistoryFileBrowser', browserNodeProvider);
     vscode.window.registerTreeDataProvider('localHistoryDiffBrowser', diffNodeProvider);
 
-    vscode.commands.registerCommand('local-history.refresh-file-browser', () => {
+    vscode.commands.registerCommand('local-history.diff-browser.refresh-file-browser', () => {
         browserNodeProvider.refresh();
     });
     vscode.commands.registerCommand('local-history.diff-browser.open-source', async (filePath: vscode.Uri) => {
         await diffNodeProvider.selectFile(filePath);
     });
-    vscode.commands.registerCommand('local-history.diff-browser.open-commit', async (fileDiff: lh.diff, index: number) => {
+    vscode.commands.registerCommand('local-history.diff-browser.open-commit', async (fileDiff: DiffExt, index: number) => {
         await openCommit(fileDiff, index);
     });
-    vscode.commands.registerCommand('local-history.diff-browser.open-patch', async (fileDiff: lh.diff, index: number) => {
-        await openPatch(fileDiff, index);
+    vscode.commands.registerCommand('local-history.diff-browser.open-patch', async (fileDiff: DiffExt, patchIndex: number, commitIndex: number) => {
+        await openPatch(fileDiff, patchIndex, commitIndex);
     });
     vscode.commands.registerCommand('local-history.diff-browser.restore', async (selectedItem: DiffItem) => {
-        if (selectedItem.type == lh.DiffType.Commit) {
+        if (selectedItem.type == DiffType.Commit) {
             await restoreCommit(selectedItem);
-        } else if (selectedItem.type == lh.DiffType.Patch) {
+        } else if (selectedItem.type == DiffType.Patch) {
             await restorePatch(selectedItem);
         }
-    })
+    });
+    vscode.commands.registerCommand('local-history.diff-browser.delete-commit', async (selectedItem: DiffItem) => {
+        await deleteCommit(selectedItem);
+    });
+    vscode.commands.registerCommand('local-history.diff-browser.rename-commit', async (selectedItem: DiffItem) => {
+        await renameCommit(selectedItem);
+    });
+    vscode.commands.registerCommand('local-history.diff-browser.order-ascending', async () => {
+        await diffNodeProvider.toggleOrder();
+    });
+    vscode.commands.registerCommand('local-history.diff-browser.order-descending', async () => {
+        await diffNodeProvider.toggleOrder();
+    });
 
-    vscode.workspace.onDidCreateFiles((e) => {
+    vscode.workspace.onDidCreateFiles(async (e) => {
         browserNodeProvider.refresh();
-        diffNodeProvider.refresh();
+        await diffNodeProvider.refresh();
     });
-    vscode.workspace.onDidDeleteFiles((e) => {
+    vscode.workspace.onDidDeleteFiles(async (e) => {
         browserNodeProvider.refresh();
-        diffNodeProvider.refresh();
+        await diffNodeProvider.refresh();
     });
-    vscode.workspace.onDidRenameFiles((e) => {
+    vscode.workspace.onDidRenameFiles(async (e) => {
         browserNodeProvider.refresh();
-        diffNodeProvider.refresh();
+        await diffNodeProvider.refresh();
     });
-    vscode.workspace.onDidChangeTextDocument((e) => {
-        diffNodeProvider.refresh();
+    vscode.workspace.onDidChangeTextDocument(async (e) => {
+        await diffNodeProvider.refresh();
     });
-    vscode.workspace.onDidChangeWorkspaceFolders((e) => {
+    vscode.workspace.onDidChangeWorkspaceFolders(async (e) => {
         browserNodeProvider.refresh();
-        diffNodeProvider.refresh();
+        await diffNodeProvider.refresh();
     });
 }

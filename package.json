@@ -10,10 +10,58 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onStartupFinished"
+		"workspaceContains:**"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"configuration": {
+			"title": "Local History",
+			"properties": {
+				"local-history.enable": {
+					"type": "boolean",
+					"scope": "resource",
+					"default": "true",
+					"description": "Follow and save changes"
+				},
+				"local-history.browser.descending": {
+					"type": "boolean",
+					"default": "true",
+					"description": "Checked - descending\nNot checked - ascending"
+				},
+				"local-history.commits.clearPatchesOnNewCommit": {
+					"type": "boolean",
+					"scope": "resource",
+					"default": true,
+					"description": "Clear all previous patches after creating commit"
+				},
+				"local-history.commits.patchDelay": {
+					"type": "integer",
+					"default": 5,
+					"description": "Add patch creation delay (in seconds)"
+				},
+				"local-history.date.dateFormat": {
+					"type": "string",
+					"default": "DD-MM-YY hh:mm",
+					"markdownDescription": "Date format string (ISO 8601) [More](https://help.xpo.dev/local-history/date)"
+				},
+				"local-history.date.dateRepresentation": {
+					"type": "string",
+					"scope": "resource",
+					"enum": [
+						"1 Hour",
+						"2 Hours",
+						"4 Hours",
+						"8 Hours",
+						"1 Day",
+						"7 Days",
+						"30 Days",
+						"Never"
+					],
+					"default": "7 Days",
+					"description": "After the time passed the browser will show the date instead of how much time passed (e.g. 5 minutes ago)"
+				}
+			}
+		},
 		"commands": [
 			{
 				"command": "local-history.restore-patch",
@@ -25,7 +73,8 @@
 			},
 			{
 				"command": "local-history.create-commit",
-				"title": "Local History: Create Commit"
+				"title": "Local History: Create Commit",
+				"when": "editorTextFocus"
 			},
 			{
 				"command": "local-history.refresh-file-browser",
@@ -41,12 +90,30 @@
 				"title": "Restore"
 			},
 			{
+				"command": "local-history.diff-browser.rename-commit",
+				"title": "Rename Commit"
+			},
+			{
 				"command": "local-history.diff-browser.open-commit",
 				"title": "Local History: Open Commit"
 			},
 			{
 				"command": "local-history.diff-browser.open-patch",
 				"title": "Local History: Open Patch"
+			},
+			{
+				"command": "local-history.diff-browser.delete-commit",
+				"title": "Delete"
+			},
+			{
+				"command": "local-history.diff-browser.order-ascending",
+				"title": "Diff Browser: Change Order",
+				"icon": "$(arrow-up)"
+			},
+			{
+				"command": "local-history.diff-browser.order-descending",
+				"title": "Diff Browser: Change Order",
+				"icon": "$(arrow-down)"
 			}
 		],
 		"viewsContainers": {
@@ -54,7 +121,7 @@
 				{
 					"id": "local-history",
 					"title": "Local History",
-					"icon": "media/lh-logo.svg"
+					"icon": "$(history)"
 				}
 			]
 		},
@@ -63,13 +130,11 @@
 				{
 					"id": "localHistoryFileBrowser",
 					"name": "Files",
-					"icon": "media/lh-logo.svg",
 					"contextualTitle": "Local History"
 				},
 				{
 					"id": "localHistoryDiffBrowser",
 					"name": "Diffs",
-					"icon": "media/lh-logo.svg",
 					"contextualTitle": "Local History"
 				}
 			]
@@ -81,17 +146,77 @@
 			}
 		],
 		"menus": {
+			"commandPalette": [
+				{
+					"command": "local-history.restore-patch",
+					"when": "false"
+				},
+				{
+					"command": "local-history.restore-commit",
+					"when": "false"
+				},
+				{
+					"command": "local-history.create-commit",
+					"title": "Local History: Create Commit"
+				},
+				{
+					"command": "local-history.diff-browser.open-source",
+					"when": "false"
+				},
+				{
+					"command": "local-history.diff-browser.restore",
+					"when": "false"
+				},
+				{
+					"command": "local-history.diff-browser.rename-commit",
+					"when": "false"
+				},
+				{
+					"command": "local-history.diff-browser.open-commit",
+					"when": "false"
+				},
+				{
+					"command": "local-history.diff-browser.open-patch",
+					"when": "false"
+				},
+				{
+					"command": "local-history.diff-browser.delete-commit",
+					"when": "false"
+				}
+			],
 			"view/title": [
 				{
 					"command": "local-history.refresh-file-browser",
 					"when": "view == localHistoryFileBrowser",
+					"group": "navigation"
+				},
+				{
+					"command": "local-history.diff-browser.order-descending",
+					"when": "view == localHistoryDiffBrowser && config.local-history.browser.descending",
+					"group": "navigation"
+				},
+				{
+					"command": "local-history.diff-browser.order-ascending",
+					"when": "view == localHistoryDiffBrowser && !config.local-history.browser.descending",
 					"group": "navigation"
 				}
 			],
 			"view/item/context": [
 				{
 					"command": "local-history.diff-browser.restore",
-					"when": "view == localHistoryDiffBrowser && viewItem == browserDiffItem"
+					"when": "view == localHistoryDiffBrowser && viewItem == commitDiffItem"
+				},
+				{
+					"command": "local-history.diff-browser.rename-commit",
+					"when": "view == localHistoryDiffBrowser && viewItem == commitDiffItem"
+				},
+				{
+					"command": "local-history.diff-browser.restore",
+					"when": "view == localHistoryDiffBrowser && viewItem == patchDiffItem"
+				},
+				{
+					"command": "local-history.diff-browser.delete-commit",
+					"when": "view == localHistoryDiffBrowser && viewItem == commitDiffItem"
 				}
 			]
 		}
