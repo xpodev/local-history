@@ -8,7 +8,7 @@ const LH_DIR = ".lh";
 const LH_IGNORE_FIlE = `${LH_DIR}/.lhignore`;
 
 export class LHWorkspaceFolderProvider {
-    constructor(public readonly rootDir: vscode.WorkspaceFolder) {
+    constructor(public readonly rootDir: vscode.WorkspaceFolder, public readonly enabled: boolean = true) {
         this.lhDir = vscode.Uri.joinPath(this.rootDir.uri, LH_DIR);
         this.ignoreFile = vscode.Uri.joinPath(this.rootDir.uri, LH_IGNORE_FIlE);
     }

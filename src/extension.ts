@@ -16,23 +16,19 @@ const fileTimeDelay: { [key: string]: number } = {
 
 const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
 	const filePath = saveEvent.document.uri;
-	const workspaceFolderId = vscode.workspace.getWorkspaceFolder(filePath)?.index;
-	if (workspaceFolderId == undefined) {
+	const workspaceFolderId = vscode.workspace.getWorkspaceFolder(filePath)!.index;
+	const relativePath = vscode.workspace.asRelativePath(filePath);
+	if (fileTimeDelay[relativePath]) {
+		if ((Date.now() - fileTimeDelay[relativePath]) < (vscode.workspace.getConfiguration("local-history").get<number>("commits.patchDelay")! * 1000)) {
+			return;
+		}
+	}
+	if (await LH_WORKSPACES[workspaceFolderId].isIgnored(filePath) || !LH_WORKSPACES[workspaceFolderId].enabled) {
 		return;
 	} else {
-		const relativePath = vscode.workspace.asRelativePath(filePath);
-		if (fileTimeDelay[relativePath]) {
-			if ((Date.now() - fileTimeDelay[relativePath]) < (vscode.workspace.getConfiguration("local-history").get<number>("commits.patchDelay")! * 1000)) {
-				return;
-			}
-		}
-		if (await LH_WORKSPACES[workspaceFolderId].isIgnored(filePath)) {
-			return;
-		} else {
-			let diskData = await FileSystemUtils.readFile(saveEvent.document.uri)
-			await createDiff(saveEvent.document, diskData);
-			fileTimeDelay[relativePath] = Date.now();
-		}
+		let diskData = await FileSystemUtils.readFile(saveEvent.document.uri)
+		await createDiff(saveEvent.document, diskData);
+		fileTimeDelay[relativePath] = Date.now();
 	}
 });
 
@@ -104,11 +100,15 @@ async function init(): Promise<void> {
 }
 
 async function loadWorkspaceFolders() {
-	LH_WORKSPACES.splice(0, LH_WORKSPACES.length);
+	// Reset the array
+	LH_WORKSPACES.length = 0;
 	if (vscode.workspace.workspaceFolders) {
 		for (const folder of vscode.workspace.workspaceFolders) {
-			const workspaceFolder = new LHWorkspaceFolderProvider(folder);
-			await workspaceFolder.init();
+			const enabled = vscode.workspace.getConfiguration('local-history', folder).get<boolean>('enable');
+			const workspaceFolder = new LHWorkspaceFolderProvider(folder, enabled);
+			if (enabled) {
+				await workspaceFolder.init();
+			}
 			LH_WORKSPACES.push(workspaceFolder);
 		}
 	}

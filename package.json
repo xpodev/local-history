@@ -10,7 +10,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onStartupFinished"
+		"workspaceContains:**"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -19,6 +19,7 @@
 			"properties": {
 				"local-history.enable": {
 					"type": "boolean",
+					"scope": "resource",
 					"default": "true",
 					"description": "Follow and save changes"
 				},
@@ -29,6 +30,7 @@
 				},
 				"local-history.commits.clearPatchesOnNewCommit": {
 					"type": "boolean",
+					"scope": "resource",
 					"default": true,
 					"description": "Clear all previous patches after creating commit"
 				},
@@ -44,6 +46,7 @@
 				},
 				"local-history.date.dateRepresentation": {
 					"type": "string",
+					"scope": "resource",
 					"enum": [
 						"1 Hour",
 						"2 Hours",
@@ -118,7 +121,7 @@
 				{
 					"id": "local-history",
 					"title": "Local History",
-					"icon": "$(timeline-open)"
+					"icon": "$(history)"
 				}
 			]
 		},
