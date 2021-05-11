@@ -1,8 +1,13 @@
 {
 	"name": "local-history",
 	"displayName": "Local History",
-	"description": "Local diff system for quick restoration of file versions",
-	"version": "0.0.1",
+	"description": "Local diff system for maintaining files versions",
+	"publisher": "xpo",
+	"version": "0.0.2",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/xpodev/local-history.git"
+	},
 	"engines": {
 		"vscode": "^1.54.0"
 	},
@@ -221,6 +226,12 @@
 			]
 		}
 	},
+	"keywords": [
+		"local",
+		"history",
+		"versions",
+		"local git"
+	],
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -p ./",
