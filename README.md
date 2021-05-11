@@ -18,15 +18,16 @@ Local History uses [jsdiff](https://github.com/kpdecker/jsdiff) by Kevin Decker
 - Saving differences between files without copying the whole content.
 - Comparing versions side by side with highlighting the changes.
 - Graphical User Interface for managing, editing and restoring old versions.
-- Adding commits for organizing your changes.
+- Adding commits to organize your changes.
 
-# Example
+### Overview
 
 Every time a file is saved, a diff is saved inside a folder called `.lh`.
 You can maintain your versions in the Local History bar.
 
 ![Overview](https://help.xpo.dev/local-history/gif/overview)
 
+### Create Commit
 
 Create commit if you're happy with the current code.
 Don't worry, older commits are also saved if you want to go back or compare.
