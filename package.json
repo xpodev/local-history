@@ -3,7 +3,7 @@
 	"displayName": "Local History",
 	"description": "Local diff system for maintaining files versions",
 	"publisher": "xpo",
-	"version": "0.0.2",
+	"version": "1.0.0",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/xpodev/local-history.git"
@@ -135,12 +135,14 @@
 				{
 					"id": "localHistoryFileBrowser",
 					"name": "Files",
-					"contextualTitle": "Local History"
+					"contextualTitle": "Local History",
+					"when": "workspaceFolderCount > 0"
 				},
 				{
 					"id": "localHistoryDiffBrowser",
 					"name": "Diffs",
-					"contextualTitle": "Local History"
+					"contextualTitle": "Local History",
+					"when": "workspaceFolderCount > 0"
 				}
 			]
 		},
