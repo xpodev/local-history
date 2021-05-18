@@ -114,23 +114,36 @@ async function loadWorkspaceFolders() {
 	}
 }
 
+class TrackFilesItem {
+	constructor(public title: string, public value: boolean) {
+
+	}
+}
+
+const yes = new TrackFilesItem("Yes", true);
+const no = new TrackFilesItem("No", false);
+
 export async function activate(context: vscode.ExtensionContext) {
-	if (vscode.workspace.getConfiguration('local-history').get<boolean>('enable')) {
-		await init();
-		initGUI();
+	const trackFiles = await vscode.window.showInformationMessage<TrackFilesItem>("Do you want Local History to track this workspace?", yes, no);
+	if (trackFiles) {
+		vscode.workspace.getConfiguration('local-history').update('enable', trackFiles.value);
+		if (vscode.workspace.getConfiguration('local-history').get<boolean>('enable')) {
+			await init();
+			initGUI();
 
-		vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
+			vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
 
-		const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {
-			await createCommit();
-		});
+			const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {
+				await createCommit();
+			});
 
-		vscode.workspace.onDidChangeWorkspaceFolders(async () => {
-			await loadWorkspaceFolders();
-		});
+			vscode.workspace.onDidChangeWorkspaceFolders(async () => {
+				await loadWorkspaceFolders();
+			});
 
-		context.subscriptions.push(createCommitCmd);
-		context.subscriptions.push(onSave);
+			context.subscriptions.push(createCommitCmd);
+			context.subscriptions.push(onSave);
+		}
 	}
 }
 

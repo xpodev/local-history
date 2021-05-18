@@ -3,7 +3,7 @@
 	"displayName": "Local History",
 	"description": "Local diff system for maintaining files versions",
 	"publisher": "xpo",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/xpodev/local-history.git"
@@ -25,7 +25,7 @@
 				"local-history.enable": {
 					"type": "boolean",
 					"scope": "resource",
-					"default": "true",
+					"default": "false",
 					"description": "Follow and save changes"
 				},
 				"local-history.browser.descending": {
