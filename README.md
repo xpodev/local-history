@@ -52,6 +52,11 @@ Don't worry, older commits are also saved if you want to go back or compare.
 
 ## Release Notes
 
+### 1.0.2
+- Changed default extension enablement to false.
+- Added enable prompt.
+- Added icon :)
+
 ### 1.0.0
 
 Initial release of Local History
