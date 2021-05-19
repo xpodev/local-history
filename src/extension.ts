@@ -124,28 +124,33 @@ const yes = new TrackFilesItem("Yes", true);
 const no = new TrackFilesItem("No", false);
 
 export async function activate(context: vscode.ExtensionContext) {
-	const trackFiles = await vscode.window.showInformationMessage<TrackFilesItem>("Do you want Local History to track this workspace?", yes, no);
+	let trackFiles;
+	const config = vscode.workspace.getConfiguration('local-history');
+	if (!config.get<boolean>('enable')) {
+		trackFiles = await vscode.window.showInformationMessage<TrackFilesItem>("Do you want Local History to track this workspace?", yes, no);
+	}
 	if (trackFiles) {
-		vscode.workspace.getConfiguration('local-history').update('enable', trackFiles.value);
-		if (vscode.workspace.getConfiguration('local-history').get<boolean>('enable')) {
-			await init();
-			initGUI();
+		await config.update('enable', trackFiles.value);
+	}
+	if (config.get<boolean>('enable') || trackFiles?.value) {
+		await init();
+		initGUI();
 
-			vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
+		vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
 
-			const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {
-				await createCommit();
-			});
+		const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {
+			await createCommit();
+		});
 
-			vscode.workspace.onDidChangeWorkspaceFolders(async () => {
-				await loadWorkspaceFolders();
-			});
+		vscode.workspace.onDidChangeWorkspaceFolders(async () => {
+			await loadWorkspaceFolders();
+		});
 
-			context.subscriptions.push(createCommitCmd);
-			context.subscriptions.push(onSave);
-		}
+		context.subscriptions.push(createCommitCmd);
+		context.subscriptions.push(onSave);
 	}
 }
+
 
 // this method is called when your extension is deactivated
 export function deactivate() { }
