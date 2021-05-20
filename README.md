@@ -52,6 +52,10 @@ Don't worry, older commits are also saved if you want to go back or compare.
 
 ## Release Notes
 
+### 1.0.4
+- Added Commit All command.
+- Fixed some single root workspace issue.
+
 ### 1.0.2
 - Changed default extension enablement to false.
 - Added enable prompt.
