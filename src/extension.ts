@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import * as Diff from 'diff';
 import { DateUtils, FileSystemUtils } from './utilities';
 import { initGUI, diffNodeProvider } from './gui';
-import { DiffExt } from './diff-ext';
+import { DiffExt, commit } from './diff-ext';
 import tempFileProvider from './temp-provider';
 import { LHWorkspaceFolderProvider, LH_WORKSPACES } from './workspace-folder-provider';
 
@@ -48,7 +48,8 @@ async function createDiff(document: vscode.TextDocument, diskData: string): Prom
 			activeCommit.newPatch(patch);
 		}
 	} else {
-		fileDiff.newCommit(newData);
+		const commitName = `Commit-${fileDiff.commits.length}`;
+		fileDiff.newCommit(newData, commitName);
 	}
 	await fileDiff.save();
 }
@@ -93,6 +94,53 @@ export async function createCommit(filePath?: vscode.Uri) {
 	fileDiff.newCommit(newData, commitName);
 	await fileDiff.save();
 	await diffNodeProvider.refresh();
+}
+
+async function commitAll(): Promise<void> {
+	let commitName = await vscode.window.showInputBox({
+		prompt: "Enter commit name"
+	});
+
+	// Removing space at the beginning and the end of the string.
+	commitName = commitName?.replace(/^\s*/, "").replace(/\s*$/, "");
+
+	if (!commitName) {
+		return;
+	}
+	const Now = Date.now();
+	for (const folder of LH_WORKSPACES) {
+		await saveAll(folder.rootDir.uri, commitName, Now);
+	}
+}
+
+async function saveAll(folder: vscode.Uri, name: string, date: number) {
+	const workspaceFolder = LH_WORKSPACES[vscode.workspace.getWorkspaceFolder(folder)!.index];
+	const folderContent = await vscode.workspace.fs.readDirectory(folder);
+	for (const file of folderContent) {
+		const filePath = vscode.Uri.joinPath(folder, file[0]);
+
+		if (file[1] == vscode.FileType.File) {
+			if (await workspaceFolder.isIgnored(filePath)) {
+				continue;
+			} else {
+				const commit: commit = {
+					name: name,
+					content: await FileSystemUtils.readFile(filePath),
+					activePatchIndex: 0,
+					patches: [],
+					date: date
+				};
+				const fileDiff = await DiffExt.load(filePath);
+				fileDiff.newCommit(commit, name);
+				await fileDiff.save();
+			}
+		} else if (file[1] == vscode.FileType.Directory) {
+			if (await workspaceFolder.isIgnored(filePath)) {
+				continue;
+			}
+			await saveAll(filePath, name, date);
+		}
+	}
 }
 
 async function init(): Promise<void> {
@@ -140,6 +188,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {
 			await createCommit();
+		});
+
+		vscode.commands.registerCommand('local-history.commit-all', async () => {
+			await commitAll();
 		});
 
 		vscode.workspace.onDidChangeWorkspaceFolders(async () => {

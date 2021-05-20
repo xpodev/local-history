@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as Diff from 'diff';
 import { encode, FileSystemUtils } from './utilities';
+import { LH_WORKSPACES } from './workspace-folder-provider';
 
 const NULL_PATCH = Diff.createPatch('', '', '');
 const TEMP_SCHEME = "temp";
@@ -95,9 +96,13 @@ export class DiffExt {
         return this.activeCommit.patches;
     }
 
-    newCommit(data: string, name?: string) {
-        name = name ?? `Commit-${this.commits.length}`;
-        let createdCommit = new Commit(data, name);
+    newCommit(data: string | commit, name: string) {
+        let createdCommit: Commit;
+        if (typeof data == "string") {
+            createdCommit = new Commit(data, name);
+        } else {
+            createdCommit = new Commit(data);
+        }
 
         // Elazar thinks it's better like that
         createdCommit.newPatch(NULL_PATCH);
@@ -131,7 +136,9 @@ export class DiffExt {
 
     getDiffPath() {
         const relativeFilePath = vscode.workspace.asRelativePath(this.sourceFile).split("/");
-        relativeFilePath.shift();
+        if (LH_WORKSPACES.length > 1) {
+            relativeFilePath.shift();
+        }
         return vscode.Uri.joinPath(this.lhFolder, `${relativeFilePath.join("/")}.json`);
     }
 
@@ -198,7 +205,7 @@ type diff = {
     commits: Commit[]
 }
 
-type commit = {
+export type commit = {
     name: string,
     content: string,
     activePatchIndex: number,
