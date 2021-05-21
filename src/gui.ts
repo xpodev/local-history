@@ -291,12 +291,12 @@ async function openPatch(fileDiff: DiffExt, patchIndex: number, commitIndex: num
     tempFileProvider.refresh();
 }
 
-async function restoreCommit(selectedItem: DiffItem) {
+async function restoreCommit(selectedItem: CommitItem) {
     selectedItem.diff.restoreCommit(selectedItem.index);
 }
 
-async function restorePatch(selectedItem: DiffItem) {
-    selectedItem.diff.restorePatch(selectedItem.index);
+async function restorePatch(selectedItem: PatchItem) {
+    selectedItem.diff.restorePatch(selectedItem.index, selectedItem.commitIndex);
 }
 
 async function renameCommit(selectedItem: DiffItem) {
@@ -338,9 +338,9 @@ export function initGUI() {
     });
     vscode.commands.registerCommand('local-history.diff-browser.restore', async (selectedItem: DiffItem) => {
         if (selectedItem.type == DiffType.Commit) {
-            await restoreCommit(selectedItem);
+            await restoreCommit(selectedItem as CommitItem);
         } else if (selectedItem.type == DiffType.Patch) {
-            await restorePatch(selectedItem);
+            await restorePatch(selectedItem as PatchItem);
         }
     });
     vscode.commands.registerCommand('local-history.diff-browser.delete-commit', async (selectedItem: DiffItem) => {
