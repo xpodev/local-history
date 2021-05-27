@@ -68,6 +68,12 @@
 				}
 			}
 		},
+		"keybindings": [
+			{
+				"command": "local-history.open-diff",
+				"key": "CTRL+SHIFT+ALT+D"
+			}
+		],
 		"commands": [
 			{
 				"command": "local-history.restore-patch",
@@ -80,6 +86,11 @@
 			{
 				"command": "local-history.create-commit",
 				"title": "Local History: Create Commit",
+				"when": "editorTextFocus"
+			},
+			{
+				"command": "local-history.open-diff",
+				"title": "Local History: Open Diff",
 				"when": "editorTextFocus"
 			},
 			{
@@ -166,6 +177,10 @@
 				},
 				{
 					"command": "local-history.restore-commit",
+					"when": "false"
+				},
+				{
+					"command": "local-history.open-diff",
 					"when": "false"
 				},
 				{

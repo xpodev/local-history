@@ -185,7 +185,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		initGUI();
 
 		vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
-
+		vscode.commands.registerCommand("local-history.open-diff", async () => {
+			if (vscode.window.activeTextEditor) {
+				await diffNodeProvider.selectFile(vscode.window.activeTextEditor.document.uri);
+				vscode.commands.executeCommand("localHistoryDiffBrowser.focus");
+			}
+		});
 		const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {
 			await createCommit();
 		});

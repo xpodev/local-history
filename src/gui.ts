@@ -203,7 +203,7 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
         this._onDidChangeTreeData.fire(undefined);
     }
 
-    getTreeItem(element: DiffItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
+    getTreeItem(element: DiffItem): DiffItem | Thenable<DiffItem> {
         return element;
     }
 
@@ -266,13 +266,14 @@ export const diffNodeProvider = new DiffNodeProvider();
 async function openCommit(fileDiff: DiffExt, index: number) {
     const sourceFile = fileDiff.sourceFile;
     const tempFile = fileDiff.tempURI(index, 0);
-    vscode.commands.executeCommand(
+    await vscode.commands.executeCommand(
         "vscode.diff",
         sourceFile,
         tempFile,
         `${FileSystemUtils.filename(sourceFile)} \u2B0C ${fileDiff.commits[index].name}`
     );
     tempFileProvider.refresh();
+    vscode.commands.executeCommand("localHistoryDiffBrowser.focus");
 }
 
 async function openPatch(fileDiff: DiffExt, patchIndex: number, commitIndex: number) {
@@ -281,7 +282,7 @@ async function openPatch(fileDiff: DiffExt, patchIndex: number, commitIndex: num
     if (patched || patched === '') {
         const tempFile = fileDiff.tempURI(commitIndex, patchIndex);
         const formattedDate = new DateUtils.DateExt(fileDiff.commits[commitIndex].patches[patchIndex].date).represent();
-        vscode.commands.executeCommand(
+        await vscode.commands.executeCommand(
             "vscode.diff",
             sourceFile,
             tempFile,
@@ -289,6 +290,7 @@ async function openPatch(fileDiff: DiffExt, patchIndex: number, commitIndex: num
         );
     }
     tempFileProvider.refresh();
+    vscode.commands.executeCommand("localHistoryDiffBrowser.focus");
 }
 
 async function restoreCommit(selectedItem: CommitItem) {
