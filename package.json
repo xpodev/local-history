@@ -3,7 +3,7 @@
 	"displayName": "Local History",
 	"description": "Local diff system for maintaining files versions",
 	"publisher": "xpo",
-	"version": "1.0.6",
+	"version": "1.1.0",
 	"icon": "media/Logo.png",
 	"repository": {
 		"type": "git",
