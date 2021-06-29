@@ -135,11 +135,11 @@ export class DiffExt {
     }
 
     getDiffPath() {
-        const relativeFilePath = vscode.workspace.asRelativePath(this.sourceFile).split("/");
+        const relativeFilePath = vscode.workspace.asRelativePath(this.sourceFile).split('/');
         if (LH_WORKSPACES.length > 1) {
             relativeFilePath.shift();
         }
-        return vscode.Uri.joinPath(this.lhFolder, `${relativeFilePath.join("/")}.json`);
+        return vscode.Uri.joinPath(this.lhFolder, `${relativeFilePath.join('/')}.json`);
     }
 
     getPatched(index: number, commitIndex?: number): string {
@@ -179,7 +179,9 @@ export class DiffExt {
     }
 
     async loadDiff() {
-        if (await FileSystemUtils.fileExists(this.getDiffPath())) {
+        const foo = this.getDiffPath();
+        const exists = await FileSystemUtils.fileExists(foo);
+        if (exists) {
             const fileData = JSON.parse(await FileSystemUtils.readFile(this.getDiffPath()));
             fileData.commits.forEach((data: commit) => {
                 this.commits.push(new Commit(data));

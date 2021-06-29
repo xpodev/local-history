@@ -137,11 +137,11 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
         const folderContent = await vscode.workspace.fs.readDirectory(folderPath);
         const folders: PathItem[] = [];
         const files: PathItem[] = [];
-        folderContent.forEach(([fileName, fileType]) => {
-            if (isLHDir(vscode.Uri.joinPath(folderPath, fileName))) {
+        folderContent.forEach(async ([fileName, fileType]) => {
+            const itemPath = vscode.Uri.joinPath(folderPath, fileName);
+            if (isLHDir(itemPath)) {
                 return;
             }
-            const itemPath = vscode.Uri.joinPath(folderPath, fileName);
             switch (fileType) {
                 case vscode.FileType.File:
                     files.push(
@@ -160,9 +160,30 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
                             itemPath
                         ));
                     break;
+                case vscode.FileType.SymbolicLink:
+                    folders.push(
+                        new PathItem(
+                            fileName,
+                            vscode.TreeItemCollapsibleState.None,
+                            itemPath
+                        ));
+                    break;
                 default:
-                    return;
+                // return;
             }
+            // @ts-expect-error there's something weird about FileType
+            if (fileType == 65) {
+                const realPath = FileSystemUtils.realPath(itemPath);
+                const pathItem = new PathItem(
+                    fileName,
+                    vscode.TreeItemCollapsibleState.None,
+                    itemPath,
+                    new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [realPath])
+                );
+                pathItem.description = "⎘";
+                files.push(pathItem);
+            }
+
         });
         return folders.concat(files);
     }

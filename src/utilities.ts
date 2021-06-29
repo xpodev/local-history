@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as fs from 'fs';
 import { TextEncoder } from "util";
 
 export function encode(str?: string): Uint8Array {
@@ -146,8 +147,12 @@ export module FileSystemUtils {
         return vscode.Uri.joinPath(uriPath, '..');
     }
 
+    export function realPath(uriPath: vscode.Uri): vscode.Uri {
+        const path = fs.readlinkSync(uriPath.fsPath).split('\\').join('/');
+        return vscode.Uri.parse(`${uriPath.scheme}:${path}`, true);
+    }
+
     export function filename(uriPath: vscode.Uri): string {
-        const parts = uriPath.path.split("/");
-        return parts[parts.length - 1];
+        return uriPath.path.split('/').pop()!;
     }
 }

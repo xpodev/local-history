@@ -36,7 +36,7 @@ export class LHWorkspaceFolderProvider {
     }
 
     async ignoredFiles() {
-        let lhIgnore = ['\\.lh/.*'];
+        let lhIgnore = [`\\.lh/.*`];
         if (await FileSystemUtils.fileExists(this.ignoreFile)) {
             lhIgnore = lhIgnore.concat(
                 (await FileSystemUtils.readFile(this.ignoreFile))

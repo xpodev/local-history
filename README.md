@@ -48,9 +48,13 @@ Don't worry, older commits are also saved if you want to go back or compare.
 
 ## Known Issues
 
-*None*
+- Currently diff view supports only `File://` schema.
 
 ## Release Notes
+
+
+### 1.1.0
+- Added support for symbolic links.
 
 ### 1.0.6
 - Added command to open the diff for the active file.
@@ -65,5 +69,6 @@ Don't worry, older commits are also saved if you want to go back or compare.
 - Added icon :)
 
 ### 1.0.0
+- Initial release of Local History
 
-Initial release of Local History
+Full changelog can be found [here](https://github.com/xpodev/local-history/blob/main/CHANGELOG.md)

@@ -9,12 +9,13 @@ const tempFileProvider = new (class implements vscode.TextDocumentContentProvide
 	async provideTextDocumentContent(uri: vscode.Uri): Promise<string | undefined> {
 		this.filePath = uri;
 		const tempFile = vscode.Uri.parse(uri.path);
-		const pathParts = tempFile.path.split("/");
+		const pathParts = tempFile.path.split('/');
 		// Last part is for the diff to know what type of file is the virtual document.
 		pathParts.pop();
 		const commitIndex = parseInt(pathParts[pathParts.length - 2]);
 		const patchIndex = parseInt(pathParts[pathParts.length - 1]);
-		const filePath = vscode.Uri.parse(`file:${pathParts.slice(0, -2).join("/")}`);
+		// Need to find a way to get the schema
+		const filePath = vscode.Uri.parse(`file:${pathParts.slice(0, -2).join('/')}`);
 		const fileDiff = await DiffExt.load(filePath);
 		if (fileDiff) {
 			if (patchIndex > 0) {

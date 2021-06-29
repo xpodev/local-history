@@ -163,22 +163,36 @@ async function loadWorkspaceFolders() {
 }
 
 class TrackFilesItem {
-	constructor(public title: string, public value: boolean) {
+	constructor(public title: string, public value: TrackFilesOptions) {
 
 	}
 }
 
-const yes = new TrackFilesItem("Yes", true);
-const no = new TrackFilesItem("No", false);
+enum TrackFilesOptions {
+	Yes,
+	No,
+	DoNotShowAgain
+}
+
+const YES = new TrackFilesItem("Yes", TrackFilesOptions.Yes);
+const NO = new TrackFilesItem("No", TrackFilesOptions.No);
+const DO_NOT_SHOW_AGAIN = new TrackFilesItem("Don't show again", TrackFilesOptions.DoNotShowAgain);
 
 export async function activate(context: vscode.ExtensionContext) {
 	let trackFiles;
 	const config = vscode.workspace.getConfiguration('local-history');
-	if (!config.get<boolean>('enable')) {
-		trackFiles = await vscode.window.showInformationMessage<TrackFilesItem>("Do you want Local History to track this workspace?", yes, no);
+	if (!config.get<boolean>('enable') && config.get<boolean>('showTrackPrompt')) {
+		trackFiles = await vscode.window.showInformationMessage<TrackFilesItem>("Do you want Local History to track this workspace?", YES, NO, DO_NOT_SHOW_AGAIN);
 	}
 	if (trackFiles) {
-		await config.update('enable', trackFiles.value);
+		if (trackFiles.value == TrackFilesOptions.Yes) {
+			config.update('enable', true);
+		} else {
+			if (trackFiles.value == TrackFilesOptions.DoNotShowAgain) {
+				config.update('showTrackPrompt', false);
+			}
+			config.update('enable', false);
+		}
 	}
 	if (config.get<boolean>('enable') || trackFiles?.value) {
 		await init();

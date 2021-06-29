@@ -10,5 +10,6 @@
     "typescript.tsc.autoDetect": "off",
     "cSpell.words": [
         "lhignore"
-    ]
+    ],
+    "local-history.enable": false
 }
