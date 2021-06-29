@@ -53,7 +53,7 @@ Don't worry, older commits are also saved if you want to go back or compare.
 ## Release Notes
 
 
-### 1.1.0
+### 1.3.0
 - Added support for symbolic links.
 
 ### 1.0.6
