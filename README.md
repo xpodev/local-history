@@ -25,14 +25,14 @@ Local History uses [jsdiff](https://github.com/kpdecker/jsdiff) by Kevin Decker
 Every time a file is saved, a diff is saved inside a folder called `.lh`.
 You can maintain your versions in the Local History bar.
 
-![Overview](https://github.com/xpodev/local-history/blob/main/media/overview.gif)
+![Overview](https://raw.githubusercontent.com/xpodev/local-history/main/media/overview.gif)
 
 ### Create Commit
 
 Create commit if you're happy with the current code.
 Don't worry, older commits are also saved if you want to go back or compare.
 
-![Create Commit](https://github.com/xpodev/local-history/blob/main/media/create-commit.gif)
+![Create Commit](https://raw.githubusercontent.com/xpodev/local-history/main/media/create-commit.gif)
 
 
 ## Extension Settings
