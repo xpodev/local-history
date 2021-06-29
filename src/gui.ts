@@ -161,17 +161,20 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
                         ));
                     break;
                 case vscode.FileType.SymbolicLink:
-                    folders.push(
-                        new PathItem(
-                            fileName,
-                            vscode.TreeItemCollapsibleState.None,
-                            itemPath
-                        ));
+                    const realPath = FileSystemUtils.realPath(itemPath);
+                    const pathItem = new PathItem(
+                        fileName,
+                        vscode.TreeItemCollapsibleState.None,
+                        itemPath,
+                        new OpenDiffCmd("Open Diff", "local-history.diff-browser.open-source", [realPath])
+                    );
+                    pathItem.description = "⎘";
+                    files.push(pathItem);
                     break;
                 default:
                 // return;
             }
-            // @ts-expect-error there's something weird about FileType
+            // @ts-ignore
             if (fileType == 65) {
                 const realPath = FileSystemUtils.realPath(itemPath);
                 const pathItem = new PathItem(
