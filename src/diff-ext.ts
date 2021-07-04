@@ -159,7 +159,7 @@ export class DiffExt {
     tempURI(commitIndex: number, patchIndex: number) {
         return vscode.Uri.joinPath(
             this.sourceFile.with({ scheme: TEMP_SCHEME }),
-            `${commitIndex}/${patchIndex}/${FileSystemUtils.filename(this.sourceFile)}` // The last part is there for intellisense, it is removed in the tempFileProvider
+            `${commitIndex}/${patchIndex}/${this.sourceFile.scheme}/${FileSystemUtils.filename(this.sourceFile)}` // The last part is there for intellisense, it is removed in the tempFileProvider
         );
     }
 

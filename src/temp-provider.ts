@@ -5,17 +5,18 @@ const tempFileProvider = new (class implements vscode.TextDocumentContentProvide
 	onDidChangeEmitter = new vscode.EventEmitter<vscode.Uri>();
 	onDidChange = this.onDidChangeEmitter.event;
 
-	private filePath!: vscode.Uri;
+	private _filePath!: vscode.Uri;
 	async provideTextDocumentContent(uri: vscode.Uri): Promise<string | undefined> {
-		this.filePath = uri;
+		this._filePath = uri;
 		const tempFile = vscode.Uri.parse(uri.path);
 		const pathParts = tempFile.path.split('/');
 		// Last part is for the diff to know what type of file is the virtual document.
 		pathParts.pop();
+		// Get schema and remove it from the Uri parts.
+		const schema = pathParts.pop();
 		const commitIndex = parseInt(pathParts[pathParts.length - 2]);
 		const patchIndex = parseInt(pathParts[pathParts.length - 1]);
-		// Need to find a way to get the schema
-		const filePath = vscode.Uri.parse(`file:${pathParts.slice(0, -2).join('/')}`);
+		const filePath = vscode.Uri.parse(`${schema}:${pathParts.slice(0, -2).join('/')}`);
 		const fileDiff = await DiffExt.load(filePath);
 		if (fileDiff) {
 			if (patchIndex > 0) {
@@ -30,7 +31,7 @@ const tempFileProvider = new (class implements vscode.TextDocumentContentProvide
 	}
 
 	refresh() {
-		this.onDidChangeEmitter.fire(this.filePath);
+		this.onDidChangeEmitter.fire(this._filePath);
 	}
 
 })();
