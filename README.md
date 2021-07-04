@@ -48,7 +48,7 @@ Don't worry, older commits are also saved if you want to go back or compare.
 
 ## Known Issues
 
-- Currently diff view supports only `File://` schema.
+_None_
 
 ## Release Notes
 
