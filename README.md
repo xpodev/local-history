@@ -69,6 +69,6 @@ Don't worry, older commits are also saved if you want to go back or compare.
 - Added icon :)
 
 ### 1.0.0
-- Initial release of Local History
+- Initial release of Local History.
 
 Full changelog can be found [here](https://github.com/xpodev/local-history/blob/main/CHANGELOG.md)
