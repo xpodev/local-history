@@ -1,6 +1,7 @@
 import { EOL } from 'os';
 import * as vscode from 'vscode';
 import { FileSystemUtils } from './utilities';
+import { hideSync } from 'hidefile';
 
 export const LH_WORKSPACES: LHWorkspaceFolderProvider[] = [];
 
@@ -22,6 +23,12 @@ export class LHWorkspaceFolderProvider {
         } else {
             if (!(await FileSystemUtils.fileExists(this.lhDir))) {
                 await vscode.workspace.fs.createDirectory(this.lhDir);
+                try {
+                    hideSync(this.lhDir.fsPath);
+                } catch (e) {
+                    // Can't change lhDir to hidden
+
+                }
             }
             await FileSystemUtils.writeFile(this.ignoreFile,
                 `# list file to not track by the local-history extension. comment line starts with a '#' character

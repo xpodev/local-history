@@ -85,7 +85,7 @@ export async function createCommit(filePath?: vscode.Uri) {
 	});
 
 	// Removing space at the beginning and the end of the string.
-	commitName = commitName?.replace(/^\s*/, "").replace(/\s*$/, "");
+	commitName = commitName?.trim();
 
 	if (!commitName) {
 		return;
@@ -102,7 +102,7 @@ async function commitAll(): Promise<void> {
 	});
 
 	// Removing space at the beginning and the end of the string.
-	commitName = commitName?.replace(/^\s*/, "").replace(/\s*$/, "");
+	commitName = commitName?.trim();
 
 	if (!commitName) {
 		return;

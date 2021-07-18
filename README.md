@@ -52,6 +52,8 @@ _None_
 
 ## Release Notes
 
+## 1.4.0
+- Local History dir is now hidden.
 
 ### 1.3.0
 - Added support for symbolic links.
