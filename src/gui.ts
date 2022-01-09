@@ -174,7 +174,7 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
                 default:
                 // return;
             }
-            // @ts-expect-error For some reason fileType of Symbolic link is 65 and not 64
+            // @ts-ignore For some reason fileType of Symbolic link is 65 and not 64
             if (fileType == 65 || fileType == 64) {
                 const realPath = FileSystemUtils.realPath(itemPath);
                 const pathItem = new PathItem(
