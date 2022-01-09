@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { FileSystemUtils } from './utilities';
 import { hideSync } from 'hidefile';
+import { homedir } from 'os';
 
 export const LH_WORKSPACES: LHWorkspaceFolderProvider[] = [];
 
@@ -43,17 +44,22 @@ export class LHWorkspaceFolderProvider {
 
     async ignoredFiles() {
         let lhIgnore = [`\\.lh/.*`];
-        if (await FileSystemUtils.fileExists(this.ignoreFile)) {
-            lhIgnore = lhIgnore.concat(
-                (await FileSystemUtils.readFile(this.ignoreFile))
-                    .split(/[\r|\n]+/)
-                    .filter(Boolean)
-                    .filter((line) => {
-                        return !(new RegExp(`^#.*$`).test(line));
-                    })
-            );
-        }
+        lhIgnore = lhIgnore.concat(await this.linesToArray(vscode.Uri.parse("file:" + homedir() + "/.lh/.lhignore")));
+        lhIgnore = lhIgnore.concat(await this.linesToArray(this.ignoreFile));
         return lhIgnore;
+    }
+
+    async linesToArray(uri: vscode.Uri) {
+        if (await FileSystemUtils.fileExists(uri)) {
+            return (await FileSystemUtils.readFile(uri))
+                .split(/[\r|\n]+/)
+                .filter(Boolean)
+                .filter((line) => {
+                    return !(new RegExp(`^#.*$`).test(line));
+                });
+        } else {
+            return [];
+        }
     }
 
     async isIgnored(filePath: vscode.Uri) {
