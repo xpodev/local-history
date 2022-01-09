@@ -116,10 +116,10 @@ async function commitAll(): Promise<void> {
 async function saveAll(folder: vscode.Uri, name: string, date: number) {
 	const workspaceFolder = LH_WORKSPACES[vscode.workspace.getWorkspaceFolder(folder)!.index];
 	const folderContent = await vscode.workspace.fs.readDirectory(folder);
-	for (const file of folderContent) {
-		const filePath = vscode.Uri.joinPath(folder, file[0]);
+	for (const [fileName, fileType] of folderContent) {
+		const filePath = vscode.Uri.joinPath(folder, fileName);
 
-		if (file[1] == vscode.FileType.File) {
+		if (fileType == vscode.FileType.File) {
 			if (await workspaceFolder.isIgnored(filePath)) {
 				continue;
 			} else {
@@ -134,7 +134,7 @@ async function saveAll(folder: vscode.Uri, name: string, date: number) {
 				fileDiff.newCommit(commit, name);
 				await fileDiff.save();
 			}
-		} else if (file[1] == vscode.FileType.Directory) {
+		} else if (fileType == vscode.FileType.Directory) {
 			if (await workspaceFolder.isIgnored(filePath)) {
 				continue;
 			}
