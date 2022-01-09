@@ -3,7 +3,7 @@
     "displayName": "Local History",
     "description": "Local diff system for maintaining files versions",
     "publisher": "xpo",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "icon": "media/Logo.png",
     "repository": {
         "type": "git",
@@ -74,7 +74,8 @@
                 }
             }
         },
-        "keybindings": [{
+        "keybindings": [
+            {
                 "command": "local-history.open-diff",
                 "key": "CTRL+L CTRL+H"
             },
@@ -91,7 +92,8 @@
                 "key": "CMD+L C"
             }
         ],
-        "commands": [{
+        "commands": [
+            {
                 "command": "local-history.restore-patch",
                 "title": "Local History: Restore Patch"
             },
@@ -155,14 +157,17 @@
             }
         ],
         "viewsContainers": {
-            "activitybar": [{
-                "id": "local-history",
-                "title": "Local History",
-                "icon": "$(history)"
-            }]
+            "activitybar": [
+                {
+                    "id": "local-history",
+                    "title": "Local History",
+                    "icon": "$(history)"
+                }
+            ]
         },
         "views": {
-            "local-history": [{
+            "local-history": [
+                {
                     "id": "localHistoryFileBrowser",
                     "name": "Files",
                     "contextualTitle": "Local History",
@@ -176,12 +181,15 @@
                 }
             ]
         },
-        "viewsWelcome": [{
-            "view": "localHistoryDiffBrowser",
-            "contents": "Local History will appear here"
-        }],
+        "viewsWelcome": [
+            {
+                "view": "localHistoryDiffBrowser",
+                "contents": "Local History will appear here"
+            }
+        ],
         "menus": {
-            "commandPalette": [{
+            "commandPalette": [
+                {
                     "command": "local-history.restore-patch",
                     "when": "false"
                 },
@@ -222,7 +230,8 @@
                     "when": "false"
                 }
             ],
-            "view/title": [{
+            "view/title": [
+                {
                     "command": "local-history.refresh-file-browser",
                     "when": "view == localHistoryFileBrowser",
                     "group": "navigation"
@@ -238,7 +247,8 @@
                     "group": "navigation"
                 }
             ],
-            "view/item/context": [{
+            "view/item/context": [
+                {
                     "command": "local-history.diff-browser.restore",
                     "when": "view == localHistoryDiffBrowser && viewItem == commitDiffItem"
                 },
