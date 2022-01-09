@@ -1,4 +1,3 @@
-import { EOL } from 'os';
 import * as vscode from 'vscode';
 import { FileSystemUtils } from './utilities';
 import { hideSync } from 'hidefile';
@@ -47,7 +46,7 @@ export class LHWorkspaceFolderProvider {
         if (await FileSystemUtils.fileExists(this.ignoreFile)) {
             lhIgnore = lhIgnore.concat(
                 (await FileSystemUtils.readFile(this.ignoreFile))
-                    .split(EOL)
+                    .split(/[\r|\n]+/)
                     .filter(Boolean)
                     .filter((line) => {
                         return !(new RegExp(`^#.*$`).test(line));
