@@ -48,9 +48,12 @@ Don't worry, older commits are also saved if you want to go back or compare.
 
 ## Known Issues
 
-_None_
+- Some features does not work as expected when using SSH.
 
 ## Release Notes
+
+## 1.5.0
+- Added global ignored files.
 
 ## 1.4.0
 - Local History dir is now hidden.
