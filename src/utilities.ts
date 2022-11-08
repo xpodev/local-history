@@ -1,6 +1,6 @@
-import * as vscode from "vscode";
+import * as vscode from 'vscode';
 import * as fs from 'fs';
-import { TextEncoder } from "util";
+import { TextEncoder } from 'util';
 
 export function encode(str?: string): Uint8Array {
     return (new TextEncoder()).encode(str);
@@ -9,28 +9,28 @@ export function encode(str?: string): Uint8Array {
 export module DateUtils {
 
     enum TimeAgo {
-        "1 Hour" = 1 * 60 * 60 * 1000,
-        "2 Hours" = TimeAgo["1 Hour"] * 2,
-        "4 Hours" = TimeAgo["1 Hour"] * 4,
-        "8 Hours" = TimeAgo["1 Hour"] * 8,
-        "1 Day" = TimeAgo["1 Hour"] * 24,
-        "7 Days" = TimeAgo["1 Day"] * 7,
-        "30 Days" = TimeAgo["1 Day"] * 30,
-        "never" = Infinity
+        '1 Hour' = 1 * 60 * 60 * 1000,
+        '2 Hours' = TimeAgo['1 Hour'] * 2,
+        '4 Hours' = TimeAgo['1 Hour'] * 4,
+        '8 Hours' = TimeAgo['1 Hour'] * 8,
+        '1 Day' = TimeAgo['1 Hour'] * 24,
+        '7 Days' = TimeAgo['1 Day'] * 7,
+        '30 Days' = TimeAgo['1 Day'] * 30,
+        'never' = Infinity
     }
 
     const monthNames = [
-        "January", "February", "March", "April", "May", "June", "July",
-        "August", "September", "October", "November", "December"
+        'January', 'February', 'March', 'April', 'May', 'June', 'July',
+        'August', 'September', 'October', 'November', 'December'
     ];
 
     const dayOfWeekNames = [
-        "Sunday", "Monday", "Tuesday",
-        "Wednesday", "Thursday", "Friday", "Saturday"
+        'Sunday', 'Monday', 'Tuesday',
+        'Wednesday', 'Thursday', 'Friday', 'Saturday'
     ];
 
     function twoDigitPad(num: number) {
-        return num < 10 ? "0" + num : num;
+        return num < 10 ? '0' + num : num;
     }
 
     export class DateExt extends Date {
@@ -80,7 +80,7 @@ export module DateUtils {
                 MM = twoDigitPad(M),
                 MMMM = monthNames[month],
                 MMM = MMMM.substr(0, 3),
-                YYYY = year + "",
+                YYYY = year + '',
                 YY = YYYY.substr(2, 2)
                 ;
             return this._dateFormat!
@@ -104,7 +104,7 @@ export module DateUtils {
                 return this.format(`${this._dateFormat}`);
             }
             let timeAgo = 0;
-            let timeStr = "Now";
+            let timeStr = 'Now';
             for (const step in DateExt.timeStep) {
                 if (timeDiff >= DateExt.timeStep[step]) {
                     timeAgo = Math.floor(timeDiff / DateExt.timeStep[step]);

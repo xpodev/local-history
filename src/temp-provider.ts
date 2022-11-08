@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DiffExt } from './diff-ext';
+import { DiffExtended } from './diff-ext';
 
 const tempFileProvider = new (class implements vscode.TextDocumentContentProvider {
 	onDidChangeEmitter = new vscode.EventEmitter<vscode.Uri>();
@@ -17,7 +17,7 @@ const tempFileProvider = new (class implements vscode.TextDocumentContentProvide
 		const commitIndex = parseInt(pathParts[pathParts.length - 2]);
 		const patchIndex = parseInt(pathParts[pathParts.length - 1]);
 		const filePath = vscode.Uri.parse(`${schema}:${pathParts.slice(0, -2).join('/')}`);
-		const fileDiff = await DiffExt.load(filePath);
+		const fileDiff = await DiffExtended.load(filePath);
 		if (fileDiff) {
 			if (patchIndex > 0) {
 				return fileDiff.commits[commitIndex].getPatched(patchIndex);

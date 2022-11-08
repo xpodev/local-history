@@ -4,12 +4,12 @@ import * as vscode from 'vscode';
 import * as Diff from 'diff';
 import { DateUtils, FileSystemUtils } from './utilities';
 import { initGUI, diffNodeProvider } from './gui';
-import { DiffExt, CommitType } from './diff-ext';
+import { DiffExtended, CommitType } from './diff-ext';
 import tempFileProvider from './temp-provider';
-import { LHWorkspaceFolderProvider, LH_WORKSPACES } from './workspace-folder-provider';
+import { LocalHistoryWorkspaceFolderProvider, localHistoryWorkspaces } from './workspace-folder-provider';
 
 
-const TEMP_SCHEME = "temp";
+const TEMP_SCHEME = 'temp';
 const fileTimeDelay: { [key: string]: number } = {
 
 };
@@ -19,11 +19,11 @@ const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
 	const workspaceFolderId = vscode.workspace.getWorkspaceFolder(filePath)!.index;
 	const relativePath = vscode.workspace.asRelativePath(filePath);
 	if (fileTimeDelay[relativePath]) {
-		if ((Date.now() - fileTimeDelay[relativePath]) < (vscode.workspace.getConfiguration("local-history").get<number>("commits.patchDelay")! * 1000)) {
+		if ((Date.now() - fileTimeDelay[relativePath]) < (vscode.workspace.getConfiguration('local-history').get<number>('commits.patchDelay')! * 1000)) {
 			return;
 		}
 	}
-	if (await LH_WORKSPACES[workspaceFolderId].isIgnored(filePath) || !LH_WORKSPACES[workspaceFolderId].enabled) {
+	if (await localHistoryWorkspaces[workspaceFolderId].isIgnored(filePath) || !localHistoryWorkspaces[workspaceFolderId].enabled) {
 		return;
 	} else {
 		let diskData = await FileSystemUtils.readFile(saveEvent.document.uri);
@@ -35,7 +35,7 @@ const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
 async function createDiff(document: vscode.TextDocument, diskData: string): Promise<void> {
 	const filePath = document.uri;
 	const newData = document.getText();
-	const fileDiff = await DiffExt.load(filePath);
+	const fileDiff = await DiffExtended.load(filePath);
 	if (fileDiff.commits.length > 0) {
 		const activeCommit = fileDiff.activeCommit;
 		const lastPatch = fileDiff.getPatched(activeCommit.activePatchIndex);
@@ -55,12 +55,12 @@ async function createDiff(document: vscode.TextDocument, diskData: string): Prom
 }
 
 export async function restorePatch(filePath: vscode.Uri, index: number): Promise<void> {
-	const fileDiff = await DiffExt.load(filePath);
+	const fileDiff = await DiffExtended.load(filePath);
 	fileDiff.restorePatch(index);
 }
 
 export async function restoreCommit(filePath: vscode.Uri, index: number): Promise<void> {
-	const fileDiff = await DiffExt.load(filePath);
+	const fileDiff = await DiffExtended.load(filePath);
 	fileDiff.restoreCommit(index);
 }
 
@@ -76,11 +76,11 @@ export async function createCommit(filePath?: vscode.Uri) {
 	} else {
 		newData = (await vscode.workspace.fs.readFile(filePath)).toString();
 	}
-	const fileDiff = await DiffExt.load(filePath);
+	const fileDiff = await DiffExtended.load(filePath);
 	const commitDate = new DateUtils.DateExt();
 	const commitDefaultName = `Commit${fileDiff ? fileDiff.commits.length : 1}-${commitDate.format()}`;
 	let commitName = await vscode.window.showInputBox({
-		prompt: "Enter commit name",
+		prompt: 'Enter commit name',
 		value: commitDefaultName,
 	});
 
@@ -98,7 +98,7 @@ export async function createCommit(filePath?: vscode.Uri) {
 
 async function commitAll(): Promise<void> {
 	let commitName = await vscode.window.showInputBox({
-		prompt: "Enter commit name"
+		prompt: 'Enter commit name'
 	});
 
 	// Removing space at the beginning and the end of the string.
@@ -108,13 +108,13 @@ async function commitAll(): Promise<void> {
 		return;
 	}
 	const now = Date.now();
-	for (const folder of LH_WORKSPACES) {
+	for (const folder of localHistoryWorkspaces) {
 		await saveAll(folder.rootDir.uri, commitName, now);
 	}
 }
 
 async function saveAll(folder: vscode.Uri, name: string, date: number) {
-	const workspaceFolder = LH_WORKSPACES[vscode.workspace.getWorkspaceFolder(folder)!.index];
+	const workspaceFolder = localHistoryWorkspaces[vscode.workspace.getWorkspaceFolder(folder)!.index];
 	const folderContent = await vscode.workspace.fs.readDirectory(folder);
 	for (const [fileName, fileType] of folderContent) {
 		const filePath = vscode.Uri.joinPath(folder, fileName);
@@ -130,7 +130,7 @@ async function saveAll(folder: vscode.Uri, name: string, date: number) {
 					patches: [],
 					date: date
 				};
-				const fileDiff = await DiffExt.load(filePath);
+				const fileDiff = await DiffExtended.load(filePath);
 				fileDiff.newCommit(commit, name);
 				await fileDiff.save();
 			}
@@ -149,15 +149,15 @@ async function init(): Promise<void> {
 
 async function loadWorkspaceFolders() {
 	// Reset the array
-	LH_WORKSPACES.length = 0;
+	localHistoryWorkspaces.length = 0;
 	if (vscode.workspace.workspaceFolders) {
 		for (const folder of vscode.workspace.workspaceFolders) {
 			const enabled = vscode.workspace.getConfiguration('local-history', folder).get<boolean>('enable');
-			const workspaceFolder = new LHWorkspaceFolderProvider(folder, enabled);
+			const workspaceFolder = new LocalHistoryWorkspaceFolderProvider(folder, enabled);
 			if (enabled) {
 				await workspaceFolder.init();
 			}
-			LH_WORKSPACES.push(workspaceFolder);
+			localHistoryWorkspaces.push(workspaceFolder);
 		}
 	}
 }
@@ -174,15 +174,15 @@ enum TrackFilesOptions {
 	doNotShowAgain
 }
 
-const YES = new TrackFilesItem("Yes", TrackFilesOptions.yes);
-const NO = new TrackFilesItem("No", TrackFilesOptions.no);
-const DO_NOT_SHOW_AGAIN = new TrackFilesItem("Don't show again", TrackFilesOptions.doNotShowAgain);
+const YES = new TrackFilesItem('Yes', TrackFilesOptions.yes);
+const NO = new TrackFilesItem('No', TrackFilesOptions.no);
+const DO_NOT_SHOW_AGAIN = new TrackFilesItem('Don\'t show again', TrackFilesOptions.doNotShowAgain);
 
 export async function activate(context: vscode.ExtensionContext) {
 	let trackFiles;
 	const config = vscode.workspace.getConfiguration('local-history');
 	if (!config.get<boolean>('enable') && config.get<boolean>('showTrackPrompt')) {
-		trackFiles = await vscode.window.showInformationMessage<TrackFilesItem>("Do you want Local History to track this workspace?", YES, NO, DO_NOT_SHOW_AGAIN);
+		trackFiles = await vscode.window.showInformationMessage<TrackFilesItem>('Do you want Local History to track this workspace?', YES, NO, DO_NOT_SHOW_AGAIN);
 	}
 	if (trackFiles) {
 		if (trackFiles.value === TrackFilesOptions.yes) {
@@ -199,10 +199,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		initGUI();
 
 		vscode.workspace.registerTextDocumentContentProvider(TEMP_SCHEME, tempFileProvider);
-		vscode.commands.registerCommand("local-history.open-diff", async () => {
+		vscode.commands.registerCommand('local-history.open-diff', async () => {
 			if (vscode.window.activeTextEditor) {
 				await diffNodeProvider.selectFile(vscode.window.activeTextEditor.document.uri);
-				vscode.commands.executeCommand("localHistoryDiffBrowser.focus");
+				vscode.commands.executeCommand('localHistoryDiffBrowser.focus');
 			}
 		});
 		const createCommitCmd = vscode.commands.registerCommand('local-history.create-commit', async () => {

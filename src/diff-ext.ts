@@ -1,14 +1,14 @@
 import * as vscode from 'vscode';
 import * as Diff from 'diff';
 import { encode, FileSystemUtils } from './utilities';
-import { LH_WORKSPACES } from './workspace-folder-provider';
+import { localHistoryWorkspaces } from './workspace-folder-provider';
 
 const NULL_PATCH = Diff.createPatch('', '', '');
-const TEMP_SCHEME = "temp";
+const TEMP_SCHEME = 'temp';
 
 export enum DiffType {
-    commit = "commit",
-    patch = "patch"
+    commit = 'commit',
+    patch = 'patch'
 }
 
 class Commit {
@@ -60,11 +60,11 @@ class Commit {
     }
 }
 
-export class DiffExt {
+export class DiffExtended {
     constructor(sourceFile: vscode.Uri) {
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(sourceFile);
         this.rootDir = workspaceFolder ? workspaceFolder.uri : FileSystemUtils.parentFolder(sourceFile);
-        this.lhFolder = vscode.Uri.joinPath(this.rootDir, ".lh");
+        this.localHistoryFolder = vscode.Uri.joinPath(this.rootDir, '.lh');
         this._sourceFile = vscode.workspace.asRelativePath(sourceFile, false);
         this.commits = [];
         this.activeCommitIndex = 0;
@@ -79,7 +79,7 @@ export class DiffExt {
         };
     }
     public readonly rootDir: vscode.Uri;
-    public readonly lhFolder: vscode.Uri;
+    public readonly localHistoryFolder: vscode.Uri;
     public commits: Commit[];
     public activeCommitIndex: number;
 
@@ -98,7 +98,7 @@ export class DiffExt {
 
     newCommit(data: string | CommitType, name: string) {
         let createdCommit: Commit;
-        if (typeof data === "string") {
+        if (typeof data === 'string') {
             createdCommit = new Commit(data, name);
         } else {
             createdCommit = new Commit(data);
@@ -106,7 +106,7 @@ export class DiffExt {
 
         // Elazar thinks it's better like that
         createdCommit.newPatch(NULL_PATCH);
-        const deletePatches = vscode.workspace.getConfiguration("local-history").get<boolean>("commits.clearPatchesOnNewCommit");
+        const deletePatches = vscode.workspace.getConfiguration('local-history').get<boolean>('commits.clearPatchesOnNewCommit');
         if (deletePatches) {
             this.commits.forEach((commit) => {
                 commit.patches = [];
@@ -124,7 +124,7 @@ export class DiffExt {
 
     async deleteCommit(index: number) {
         if (index === this.activeCommitIndex) {
-            vscode.window.showErrorMessage("Can't delete the active commit. Did you mean to restore the previous commit?");
+            vscode.window.showErrorMessage('Can\'t delete the active commit. Did you mean to restore the previous commit?');
             return;
         }
         if (index < this.activeCommitIndex) {
@@ -136,10 +136,10 @@ export class DiffExt {
 
     getDiffPath() {
         const relativeFilePath = vscode.workspace.asRelativePath(this.sourceFile).split('/');
-        if (LH_WORKSPACES.length > 1) {
+        if (localHistoryWorkspaces.length > 1) {
             relativeFilePath.shift();
         }
-        return vscode.Uri.joinPath(this.lhFolder, `${relativeFilePath.join('/')}.json`);
+        return vscode.Uri.joinPath(this.localHistoryFolder, `${relativeFilePath.join('/')}.json`);
     }
 
     getPatched(index: number, commitIndex?: number): string {
@@ -194,8 +194,8 @@ export class DiffExt {
         await vscode.workspace.fs.writeFile(this.getDiffPath(), encode(JSON.stringify(this._diffObject, null, 4)));
     }
 
-    static async load(uri: vscode.Uri): Promise<DiffExt> {
-        const diffObj = new DiffExt(uri);
+    static async load(uri: vscode.Uri): Promise<DiffExtended> {
+        const diffObj = new DiffExtended(uri);
         await diffObj.loadDiff();
         return diffObj;
     }

@@ -3,28 +3,28 @@ import { FileSystemUtils } from './utilities';
 import { hideSync } from 'hidefile';
 import { homedir } from 'os';
 
-export const LH_WORKSPACES: LHWorkspaceFolderProvider[] = [];
+export const localHistoryWorkspaces: LocalHistoryWorkspaceFolderProvider[] = [];
 
-const localHistoryDirectory = ".lh";
+const localHistoryDirectory = '.lh';
 const localHistoryIgnoreFile = `${localHistoryDirectory}/.lhignore`;
 
-export class LHWorkspaceFolderProvider {
+export class LocalHistoryWorkspaceFolderProvider {
     constructor(public readonly rootDir: vscode.WorkspaceFolder, public readonly enabled: boolean = true) {
-        this.lhDir = vscode.Uri.joinPath(this.rootDir.uri, localHistoryDirectory);
+        this.localHistoryDir = vscode.Uri.joinPath(this.rootDir.uri, localHistoryDirectory);
         this.ignoreFile = vscode.Uri.joinPath(this.rootDir.uri, localHistoryIgnoreFile);
     }
 
     public readonly ignoreFile: vscode.Uri;
-    public readonly lhDir: vscode.Uri;
+    public readonly localHistoryDir: vscode.Uri;
 
     async init() {
         if (await FileSystemUtils.fileExists(this.ignoreFile)) {
             return;
         } else {
-            if (!(await FileSystemUtils.fileExists(this.lhDir))) {
-                await vscode.workspace.fs.createDirectory(this.lhDir);
+            if (!(await FileSystemUtils.fileExists(this.localHistoryDir))) {
+                await vscode.workspace.fs.createDirectory(this.localHistoryDir);
                 try {
-                    hideSync(this.lhDir.fsPath);
+                    hideSync(this.localHistoryDir.fsPath);
                 } catch (e) {
                     // Can't change lhDir to hidden
 
@@ -32,21 +32,21 @@ export class LHWorkspaceFolderProvider {
             }
             await FileSystemUtils.writeFile(this.ignoreFile,
                 `# list file to not track by the local-history extension. comment line starts with a '#' character
-# each line describe a regular expression pattern (search for "Javascript regex")
+# each line describe a regular expression pattern (search for 'Javascript regex')
 # it will relate to the workspace directory root. for example:
-# ".*\\.txt" ignores any file with "txt" extension
-# "/test/.*" ignores all the files under the "test" directory
-# ".*/test/.*" ignores all the files under any "test" directory (even under sub-folders)
+# '.*\\.txt' ignores any file with 'txt' extension
+# '/test/.*' ignores all the files under the 'test' directory
+# '.*/test/.*' ignores all the files under any 'test' directory (even under sub-folders)
 `
             );
         }
     }
 
     async ignoredFiles() {
-        let lhIgnore = [`\\.lh/.*`];
-        lhIgnore = lhIgnore.concat(await this.linesToArray(vscode.Uri.parse("file:" + homedir() + "/.lh/.lhignore")));
-        lhIgnore = lhIgnore.concat(await this.linesToArray(this.ignoreFile));
-        return lhIgnore;
+        let localHistoryIgnore = [`\\.lh/.*`];
+        localHistoryIgnore = localHistoryIgnore.concat(await this.linesToArray(vscode.Uri.parse('file:' + homedir() + '/.lh/.lhignore')));
+        localHistoryIgnore = localHistoryIgnore.concat(await this.linesToArray(this.ignoreFile));
+        return localHistoryIgnore;
     }
 
     async linesToArray(uri: vscode.Uri) {
@@ -63,17 +63,17 @@ export class LHWorkspaceFolderProvider {
     }
 
     async isIgnored(filePath: vscode.Uri) {
-        const lhIgnored = await this.ignoredFiles();
+        const localHistoryIgnored = await this.ignoredFiles();
         const relativePath = vscode.workspace.asRelativePath(filePath, false);
-        return lhIgnored.filter((pattern) => {
+        return localHistoryIgnored.filter((pattern) => {
             return new RegExp(`^${pattern}$`).test(relativePath);
         }).length > 0;
     }
 }
 
-export function isLHDir(folderUri: vscode.Uri): boolean {
-    for (const folder of LH_WORKSPACES) {
-        if (folderUri.path === folder.lhDir.path) {
+export function isLocalHistoryDir(folderUri: vscode.Uri): boolean {
+    for (const folder of localHistoryWorkspaces) {
+        if (folderUri.path === folder.localHistoryDir.path) {
             return true;
         }
     }
