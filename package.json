@@ -27,34 +27,34 @@
                     "type": "boolean",
                     "scope": "resource",
                     "default": "false",
-                    "description": "Follow and save changes"
+                    "description": "Follow and save changes."
                 },
                 "local-history.showTrackPrompt": {
                     "type": "boolean",
                     "scope": "resource",
                     "default": "true",
-                    "description": "Show track files prompt"
+                    "description": "Show track files prompt."
                 },
                 "local-history.browser.descending": {
                     "type": "boolean",
                     "default": "true",
-                    "description": "Checked - descending\nNot checked - ascending"
+                    "description": "Checked - descending\nNot checked - ascending."
                 },
                 "local-history.commits.clearPatchesOnNewCommit": {
                     "type": "boolean",
                     "scope": "resource",
                     "default": true,
-                    "description": "Clear all previous patches after creating commit"
+                    "description": "Clear all previous patches after creating commit."
                 },
                 "local-history.commits.patchDelay": {
                     "type": "integer",
                     "default": 5,
-                    "description": "Add patch creation delay (in seconds)"
+                    "description": "Add patch creation delay (in seconds)."
                 },
                 "local-history.date.dateFormat": {
                     "type": "string",
                     "default": "DD-MM-YY hh:mm",
-                    "markdownDescription": "Date format string (ISO 8601) [More](https://help.xpo.dev/local-history/date)"
+                    "markdownDescription": "Date format string (ISO 8601) [More](https://help.xpo.dev/local-history/date)."
                 },
                 "local-history.date.dateRepresentation": {
                     "type": "string",
@@ -70,7 +70,12 @@
                         "Never"
                     ],
                     "default": "7 Days",
-                    "description": "After the time passed the browser will show the date instead of how much time passed (e.g. 5 minutes ago)"
+                    "description": "After the time passed the browser will show the date instead of how much time passed (e.g. 5 minutes ago)."
+                },
+                "local-history.localHistoryPath": {
+                    "type": "string",
+                    "default": ".lh",
+                    "description": "Local history directory name, relative to the workspace root."
                 }
             }
         },

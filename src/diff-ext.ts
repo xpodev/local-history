@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as Diff from 'diff';
 import { encode, FileSystemUtils } from './utilities';
 import { localHistoryWorkspaces } from './workspace-folder-provider';
+import { localHistoryDirectory } from './config';
 
 const NULL_PATCH = Diff.createPatch('', '', '');
 const TEMP_SCHEME = 'temp';
@@ -64,7 +65,7 @@ export class DiffExtended {
     constructor(sourceFile: vscode.Uri) {
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(sourceFile);
         this.rootDir = workspaceFolder ? workspaceFolder.uri : FileSystemUtils.parentFolder(sourceFile);
-        this.localHistoryFolder = vscode.Uri.joinPath(this.rootDir, '.lh');
+        this.localHistoryFolder = vscode.Uri.joinPath(this.rootDir, localHistoryDirectory());
         this._sourceFile = vscode.workspace.asRelativePath(sourceFile, false);
         this.commits = [];
         this.activeCommitIndex = 0;

@@ -2,16 +2,14 @@ import * as vscode from 'vscode';
 import { FileSystemUtils } from './utilities';
 import { hideSync } from 'hidefile';
 import { homedir } from 'os';
+import { localHistoryDirectory, localHistoryIgnoreFile } from './config';
 
 export const localHistoryWorkspaces: LocalHistoryWorkspaceFolderProvider[] = [];
 
-const localHistoryDirectory = '.lh';
-const localHistoryIgnoreFile = `${localHistoryDirectory}/.lhignore`;
-
 export class LocalHistoryWorkspaceFolderProvider {
     constructor(public readonly rootDir: vscode.WorkspaceFolder, public readonly enabled: boolean = true) {
-        this.localHistoryDir = vscode.Uri.joinPath(this.rootDir.uri, localHistoryDirectory);
-        this.ignoreFile = vscode.Uri.joinPath(this.rootDir.uri, localHistoryIgnoreFile);
+        this.localHistoryDir = vscode.Uri.joinPath(this.rootDir.uri, localHistoryDirectory());
+        this.ignoreFile = vscode.Uri.joinPath(this.rootDir.uri, localHistoryIgnoreFile());
     }
 
     public readonly ignoreFile: vscode.Uri;
@@ -43,8 +41,8 @@ export class LocalHistoryWorkspaceFolderProvider {
     }
 
     async ignoredFiles() {
-        let localHistoryIgnore = [`\\.lh/.*`];
-        localHistoryIgnore = localHistoryIgnore.concat(await this.linesToArray(vscode.Uri.parse('file:' + homedir() + '/.lh/.lhignore')));
+        let localHistoryIgnore = [`\\${localHistoryDirectory()}/.*`];
+        localHistoryIgnore = localHistoryIgnore.concat(await this.linesToArray(vscode.Uri.parse(`file:${homedir()}/${localHistoryIgnoreFile()}`)));
         localHistoryIgnore = localHistoryIgnore.concat(await this.linesToArray(this.ignoreFile));
         return localHistoryIgnore;
     }
@@ -53,9 +51,8 @@ export class LocalHistoryWorkspaceFolderProvider {
         if (await FileSystemUtils.fileExists(uri)) {
             return (await FileSystemUtils.readFile(uri))
                 .split(/[\r|\n]+/)
-                .filter(Boolean)
                 .filter((line) => {
-                    return !(new RegExp(`^#.*$`).test(line));
+                    return line && !(new RegExp(`^#.*$`).test(line));
                 });
         } else {
             return [];

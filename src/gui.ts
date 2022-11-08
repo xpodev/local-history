@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { DateUtils, FileSystemUtils } from './utilities';
 import { isLocalHistoryDir, localHistoryWorkspaces } from './workspace-folder-provider';
 import tempFileProvider from './temp-provider';
+import { localHistoryDirectory } from './config';
 
 class DiffItem extends vscode.TreeItem {
     constructor(
@@ -119,7 +120,7 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
             return Promise.resolve(this.scanFolder(element.resourceUri));
         } else {
             for (const folder of localHistoryWorkspaces) {
-                if (await FileSystemUtils.fileExists(vscode.Uri.joinPath(folder.rootDir.uri, '.lh'))) {
+                if (await FileSystemUtils.fileExists(vscode.Uri.joinPath(folder.rootDir.uri, localHistoryDirectory()))) {
                     rootFolders.push(
                         new PathItem(
                             folder.rootDir.name,
