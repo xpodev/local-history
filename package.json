@@ -3,14 +3,14 @@
     "displayName": "Local History",
     "description": "Local diff system for maintaining files versions",
     "publisher": "xpo",
-    "version": "1.5.0",
+    "version": "1.6.0",
     "icon": "media/Logo.png",
     "repository": {
         "type": "git",
         "url": "https://github.com/xpodev/local-history.git"
     },
     "engines": {
-        "vscode": "^1.54.0"
+        "vscode": "^1.73.0"
     },
     "categories": [
         "Other"
@@ -292,7 +292,7 @@
         "@types/hidefile": "^3.0.0",
         "@types/mocha": "^10.0.0",
         "@types/node": "^18.11.9",
-        "@types/vscode": "^1.54.0",
+        "@types/vscode": "^1.73.0",
         "@typescript-eslint/eslint-plugin": "^5.42.1",
         "@typescript-eslint/parser": "^5.42.1",
         "eslint": "^8.27.0",
