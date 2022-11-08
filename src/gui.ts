@@ -350,7 +350,7 @@ export function initGUI() {
     vscode.window.registerTreeDataProvider('localHistoryFileBrowser', browserNodeProvider);
     vscode.window.registerTreeDataProvider('localHistoryDiffBrowser', diffNodeProvider);
 
-    vscode.commands.registerCommand('local-history.diff-browser.refresh-file-browser', () => {
+    vscode.commands.registerCommand('local-history.refresh-file-browser', () => {
         browserNodeProvider.refresh();
     });
     vscode.commands.registerCommand('local-history.diff-browser.open-source', async (filePath: vscode.Uri) => {
