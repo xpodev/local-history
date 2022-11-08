@@ -25,7 +25,7 @@ class CommitItem extends DiffItem {
         public readonly index: number,
         public readonly command?: vscode.Command
     ) {
-        super(label, collapsibleState, diff, index, DiffType.Commit);
+        super(label, collapsibleState, diff, index, DiffType.commit);
         const date = new DateUtils.DateExt(this.diff.commits[index].date);
         this.description = date.represent();
     }
@@ -42,7 +42,7 @@ class PatchItem extends DiffItem {
         public readonly commitIndex: number,
         public readonly command?: vscode.Command
     ) {
-        super(label, collapsibleState, diff, index, DiffType.Patch);
+        super(label, collapsibleState, diff, index, DiffType.patch);
         const date = new DateUtils.DateExt(this.diff.commits[commitIndex].patches[index].date);
         this.description = date.represent();
     }
@@ -175,7 +175,7 @@ class BrowserNodeProvider implements vscode.TreeDataProvider<PathItem> {
                 // return;
             }
             // @ts-ignore For some reason fileType of Symbolic link is 65 and not 64
-            if (fileType == 65 || fileType == 64) {
+            if (fileType === 65 || fileType === 64) {
                 const realPath = FileSystemUtils.realPath(itemPath);
                 const pathItem = new PathItem(
                     fileName,
@@ -243,7 +243,7 @@ class DiffNodeProvider implements vscode.TreeDataProvider<DiffItem> {
     loadPatches(fileDiff: DiffExt, commitIndex: number): DiffItem[] {
         let commitPatches: PatchItem[] = [];
         fileDiff.commits[commitIndex].patches.forEach((value, patchIndex) => {
-            const onOpenPatch = new OpenPatchCmd("Local History: Open Patch", "local-history.diff-browser.open-patch", [fileDiff, patchIndex, commitIndex])
+            const onOpenPatch = new OpenPatchCmd("Local History: Open Patch", "local-history.diff-browser.open-patch", [fileDiff, patchIndex, commitIndex]);
             commitPatches.push(new PatchItem(`patch-${patchIndex}`, vscode.TreeItemCollapsibleState.None, fileDiff, patchIndex, commitIndex, onOpenPatch));
         });
         if (this._descending) {
@@ -363,9 +363,9 @@ export function initGUI() {
         await openPatch(fileDiff, patchIndex, commitIndex);
     });
     vscode.commands.registerCommand('local-history.diff-browser.restore', async (selectedItem: DiffItem) => {
-        if (selectedItem.type == DiffType.Commit) {
+        if (selectedItem.type === DiffType.commit) {
             await restoreCommit(selectedItem as CommitItem);
-        } else if (selectedItem.type == DiffType.Patch) {
+        } else if (selectedItem.type === DiffType.patch) {
             await restorePatch(selectedItem as PatchItem);
         }
     });

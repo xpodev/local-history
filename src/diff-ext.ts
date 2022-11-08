@@ -7,15 +7,15 @@ const NULL_PATCH = Diff.createPatch('', '', '');
 const TEMP_SCHEME = "temp";
 
 export enum DiffType {
-    Commit = "commit",
-    Patch = "patch"
+    commit = "commit",
+    patch = "patch"
 }
 
 class Commit {
-    constructor(data: commit);
+    constructor(data: CommitType);
     constructor(content: string, name: string);
-    constructor(data: string | commit, name?: string) {
-        if (typeof data == 'string') {
+    constructor(data: string | CommitType, name?: string) {
+        if (typeof data === 'string') {
             this.name = name!;
             this.content = data;
         } else {
@@ -30,10 +30,10 @@ class Commit {
     public name: string;
     public content: string;
     public activePatchIndex: number = 0;
-    public patches: patch[] = [];
+    public patches: Patch[] = [];
     public readonly date: number = Date.now();
 
-    get activePatch(): patch {
+    get activePatch(): Patch {
         return this.patches[this.activePatchIndex];
     }
 
@@ -71,7 +71,7 @@ export class DiffExt {
     }
 
     private readonly _sourceFile: string;
-    private get _diffObject(): diff {
+    private get _diffObject(): Diff {
         return {
             sourceFile: this._sourceFile,
             activeCommit: this.activeCommitIndex,
@@ -92,13 +92,13 @@ export class DiffExt {
     }
 
 
-    get activePatches(): patch[] {
+    get activePatches(): Patch[] {
         return this.activeCommit.patches;
     }
 
-    newCommit(data: string | commit, name: string) {
+    newCommit(data: string | CommitType, name: string) {
         let createdCommit: Commit;
-        if (typeof data == "string") {
+        if (typeof data === "string") {
             createdCommit = new Commit(data, name);
         } else {
             createdCommit = new Commit(data);
@@ -144,7 +144,7 @@ export class DiffExt {
 
     getPatched(index: number, commitIndex?: number): string {
         let commit;
-        if (commitIndex != undefined) {
+        if (commitIndex !== undefined) {
             commit = this.commits[commitIndex];
         } else {
             commit = this.activeCommit;
@@ -171,7 +171,7 @@ export class DiffExt {
 
     async restorePatch(index: number, commitIndex?: number) {
         await FileSystemUtils.writeFile(this.sourceFile, this.getPatched(index, commitIndex));
-        if (commitIndex != undefined) {
+        if (commitIndex !== undefined) {
             this.activeCommitIndex = commitIndex;
         }
         this.activeCommit.activePatchIndex = index;
@@ -183,9 +183,9 @@ export class DiffExt {
         const exists = await FileSystemUtils.fileExists(foo);
         if (exists) {
             const fileData = JSON.parse(await FileSystemUtils.readFile(this.getDiffPath()));
-            fileData.commits.forEach((data: commit) => {
+            fileData.commits.forEach((data: CommitType) => {
                 this.commits.push(new Commit(data));
-            })
+            });
             this.activeCommitIndex = fileData.activeCommit;
         }
     }
@@ -201,21 +201,21 @@ export class DiffExt {
     }
 }
 
-type diff = {
+type Diff = {
     sourceFile: string,
     activeCommit: number,
     commits: Commit[]
-}
+};
 
-export type commit = {
+export type CommitType = {
     name: string,
     content: string,
     activePatchIndex: number,
-    patches: patch[],
+    patches: Patch[],
     date: number
-}
+};
 
-type patch = {
+type Patch = {
     content: string,
     date: number
-}
+};

@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import * as Diff from 'diff';
 import { DateUtils, FileSystemUtils } from './utilities';
 import { initGUI, diffNodeProvider } from './gui';
-import { DiffExt, commit } from './diff-ext';
+import { DiffExt, CommitType } from './diff-ext';
 import tempFileProvider from './temp-provider';
 import { LHWorkspaceFolderProvider, LH_WORKSPACES } from './workspace-folder-provider';
 
@@ -26,7 +26,7 @@ const onSave = vscode.workspace.onWillSaveTextDocument(async (saveEvent) => {
 	if (await LH_WORKSPACES[workspaceFolderId].isIgnored(filePath) || !LH_WORKSPACES[workspaceFolderId].enabled) {
 		return;
 	} else {
-		let diskData = await FileSystemUtils.readFile(saveEvent.document.uri)
+		let diskData = await FileSystemUtils.readFile(saveEvent.document.uri);
 		await createDiff(saveEvent.document, diskData);
 		fileTimeDelay[relativePath] = Date.now();
 	}
@@ -107,9 +107,9 @@ async function commitAll(): Promise<void> {
 	if (!commitName) {
 		return;
 	}
-	const Now = Date.now();
+	const now = Date.now();
 	for (const folder of LH_WORKSPACES) {
-		await saveAll(folder.rootDir.uri, commitName, Now);
+		await saveAll(folder.rootDir.uri, commitName, now);
 	}
 }
 
@@ -119,11 +119,11 @@ async function saveAll(folder: vscode.Uri, name: string, date: number) {
 	for (const [fileName, fileType] of folderContent) {
 		const filePath = vscode.Uri.joinPath(folder, fileName);
 
-		if (fileType == vscode.FileType.File) {
+		if (fileType === vscode.FileType.File) {
 			if (await workspaceFolder.isIgnored(filePath)) {
 				continue;
 			} else {
-				const commit: commit = {
+				const commit: CommitType = {
 					name: name,
 					content: await FileSystemUtils.readFile(filePath),
 					activePatchIndex: 0,
@@ -134,7 +134,7 @@ async function saveAll(folder: vscode.Uri, name: string, date: number) {
 				fileDiff.newCommit(commit, name);
 				await fileDiff.save();
 			}
-		} else if (fileType == vscode.FileType.Directory) {
+		} else if (fileType === vscode.FileType.Directory) {
 			if (await workspaceFolder.isIgnored(filePath)) {
 				continue;
 			}
@@ -169,14 +169,14 @@ class TrackFilesItem {
 }
 
 enum TrackFilesOptions {
-	Yes,
-	No,
-	DoNotShowAgain
+	yes,
+	no,
+	doNotShowAgain
 }
 
-const YES = new TrackFilesItem("Yes", TrackFilesOptions.Yes);
-const NO = new TrackFilesItem("No", TrackFilesOptions.No);
-const DO_NOT_SHOW_AGAIN = new TrackFilesItem("Don't show again", TrackFilesOptions.DoNotShowAgain);
+const YES = new TrackFilesItem("Yes", TrackFilesOptions.yes);
+const NO = new TrackFilesItem("No", TrackFilesOptions.no);
+const DO_NOT_SHOW_AGAIN = new TrackFilesItem("Don't show again", TrackFilesOptions.doNotShowAgain);
 
 export async function activate(context: vscode.ExtensionContext) {
 	let trackFiles;
@@ -185,10 +185,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		trackFiles = await vscode.window.showInformationMessage<TrackFilesItem>("Do you want Local History to track this workspace?", YES, NO, DO_NOT_SHOW_AGAIN);
 	}
 	if (trackFiles) {
-		if (trackFiles.value == TrackFilesOptions.Yes) {
+		if (trackFiles.value === TrackFilesOptions.yes) {
 			config.update('enable', true);
 		} else {
-			if (trackFiles.value == TrackFilesOptions.DoNotShowAgain) {
+			if (trackFiles.value === TrackFilesOptions.doNotShowAgain) {
 				config.update('showTrackPrompt', false);
 			}
 			config.update('enable', false);

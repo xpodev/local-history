@@ -5,13 +5,13 @@ import { homedir } from 'os';
 
 export const LH_WORKSPACES: LHWorkspaceFolderProvider[] = [];
 
-const LH_DIR = ".lh";
-const LH_IGNORE_FIlE = `${LH_DIR}/.lhignore`;
+const localHistoryDirectory = ".lh";
+const localHistoryIgnoreFile = `${localHistoryDirectory}/.lhignore`;
 
 export class LHWorkspaceFolderProvider {
     constructor(public readonly rootDir: vscode.WorkspaceFolder, public readonly enabled: boolean = true) {
-        this.lhDir = vscode.Uri.joinPath(this.rootDir.uri, LH_DIR);
-        this.ignoreFile = vscode.Uri.joinPath(this.rootDir.uri, LH_IGNORE_FIlE);
+        this.lhDir = vscode.Uri.joinPath(this.rootDir.uri, localHistoryDirectory);
+        this.ignoreFile = vscode.Uri.joinPath(this.rootDir.uri, localHistoryIgnoreFile);
     }
 
     public readonly ignoreFile: vscode.Uri;

@@ -8,15 +8,15 @@ export function encode(str?: string): Uint8Array {
 
 export module DateUtils {
 
-    enum timeAgoE {
+    enum TimeAgo {
         "1 Hour" = 1 * 60 * 60 * 1000,
-        "2 Hours" = timeAgoE["1 Hour"] * 2,
-        "4 Hours" = timeAgoE["1 Hour"] * 4,
-        "8 Hours" = timeAgoE["1 Hour"] * 8,
-        "1 Day" = timeAgoE["1 Hour"] * 24,
-        "7 Days" = timeAgoE["1 Day"] * 7,
-        "30 Days" = timeAgoE["1 Day"] * 30,
-        "Never" = Infinity
+        "2 Hours" = TimeAgo["1 Hour"] * 2,
+        "4 Hours" = TimeAgo["1 Hour"] * 4,
+        "8 Hours" = TimeAgo["1 Hour"] * 8,
+        "1 Day" = TimeAgo["1 Hour"] * 24,
+        "7 Days" = TimeAgo["1 Day"] * 7,
+        "30 Days" = TimeAgo["1 Day"] * 30,
+        "never" = Infinity
     }
 
     const monthNames = [
@@ -99,7 +99,7 @@ export module DateUtils {
         represent(): string {
             const now = Date.now();
             const timeDiff = now - +this;
-            const f = timeAgoE[this._timeAgo as keyof typeof timeAgoE]
+            const f = TimeAgo[this._timeAgo as keyof typeof TimeAgo];
             if (timeDiff >= f) {
                 return this.format(`${this._dateFormat}`);
             }
@@ -119,7 +119,7 @@ export module DateUtils {
 
     type TimeStep = {
         [key: string]: number
-    }
+    };
 }
 
 export module FileSystemUtils {
