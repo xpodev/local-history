@@ -16,7 +16,7 @@ export module DateUtils {
         '1 Day' = TimeAgo['1 Hour'] * 24,
         '7 Days' = TimeAgo['1 Day'] * 7,
         '30 Days' = TimeAgo['1 Day'] * 30,
-        'never' = Infinity
+        'Never' = Infinity
     }
 
     const monthNames = [
@@ -53,11 +53,11 @@ export module DateUtils {
             }
             super(value);
             this._dateFormat = vscode.workspace.getConfiguration('local-history').get<string>('date.dateFormat');
-            this._timeAgo = vscode.workspace.getConfiguration('local-history').get<string>('date.dateRepresentation')!;
+            this._timeAgo = vscode.workspace.getConfiguration('local-history').get('date.dateRepresentation')!;
         }
 
         private _dateFormat;
-        private _timeAgo: string;
+        private _timeAgo: keyof typeof TimeAgo;
 
         format(formatStr?: string) {
             if (formatStr) {
@@ -74,14 +74,14 @@ export module DateUtils {
                 mm = twoDigitPad(minute),
                 ss = twoDigitPad(second),
                 EEEE = dayOfWeekNames[this.getDay()],
-                EEE = EEEE.substr(0, 3),
+                EEE = EEEE.slice(0, 3),
                 DD = twoDigitPad(day),
                 M = month + 1,
                 MM = twoDigitPad(M),
                 MMMM = monthNames[month],
-                MMM = MMMM.substr(0, 3),
+                MMM = MMMM.slice(0, 3),
                 YYYY = year + '',
-                YY = YYYY.substr(2, 2)
+                YY = YYYY.slice(2, 2)
                 ;
             return this._dateFormat!
                 .replace('hh', hh.toString()).replace('h', hour.toString())
@@ -99,7 +99,7 @@ export module DateUtils {
         represent(): string {
             const now = Date.now();
             const timeDiff = now - +this;
-            const f = TimeAgo[this._timeAgo as keyof typeof TimeAgo];
+            const f = TimeAgo[this._timeAgo];
             if (timeDiff >= f) {
                 return this.format(`${this._dateFormat}`);
             }
