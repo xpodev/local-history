@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as Diff from 'diff';
 import { encode, FileSystemUtils } from './utilities';
 import { localHistoryWorkspaces } from './workspace-folder-provider';
-import { localHistoryDirectory } from './config';
+import { localHistoryDirectory, maxPatches } from './config';
 
 const NULL_PATCH = Diff.createPatch('', '', '');
 const TEMP_SCHEME = 'temp';
@@ -47,6 +47,11 @@ class Commit {
             date: Date.now(),
             content: content
         });
+
+        if (this.patches.length > maxPatches()) {
+            this.patches.shift();
+        }
+
         this.activePatchIndex = this.patches.length - 1;
     }
 
