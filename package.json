@@ -76,6 +76,11 @@
                     "type": "string",
                     "default": ".lh",
                     "description": "Local history directory name, relative to the workspace root."
+                },
+                "local-history.maxPatches": {
+                    "type": "integer",
+                    "default": 100,
+                    "description": "The maximum number of patches to keep. Older patches will be deleted."
                 }
             }
         },
@@ -176,13 +181,15 @@
                     "id": "localHistoryFileBrowser",
                     "name": "Files",
                     "contextualTitle": "Local History",
-                    "when": "workspaceFolderCount > 0"
+                    "when": "workspaceFolderCount > 0",
+                    "icon": "$(history)"
                 },
                 {
                     "id": "localHistoryDiffBrowser",
                     "name": "Diffs",
                     "contextualTitle": "Local History",
-                    "when": "workspaceFolderCount > 0"
+                    "when": "workspaceFolderCount > 0",
+                    "icon": "$(history)"
                 }
             ]
         },
